@@ -464,6 +464,8 @@ Panel {
       // padding; the card clips it to the rounded corners, and the alpha lets
       // the card background and border show through.
       Rectangle {
+        id: wash
+
         anchors.fill: parent
         anchors.margins: -panel.padding
         radius: Style.cornerRadius
@@ -473,6 +475,16 @@ Panel {
           GradientStop { position: 0.45; color: root.heroMid }
           GradientStop { position: 1.0; color: root.heroEnd }
         }
+      }
+
+      // A hairline just inside the accent border so the gradient has a defined
+      // edge of its own instead of butting straight into the card frame.
+      Rectangle {
+        anchors.fill: wash
+        radius: Style.cornerRadius
+        color: "transparent"
+        border.width: 2
+        border.color: Commons.Util.alpha(root.ink, 0.12)
       }
 
       Column {
@@ -973,10 +985,10 @@ Panel {
             Text {
               anchors.centerIn: parent
               textFormat: Text.PlainText
-              text: "\udb80\udc10"
+              text: "\udb81\udc50"
               color: refreshButton.hasCursor ? root.ink : root.mutedInk
               font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
+              font.pixelSize: Style.font.icon
               renderType: Text.NativeRendering
             }
 
