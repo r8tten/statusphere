@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "naoko.statusphere",
+  "name": "Statusphere",
+  "version": "1.0.0",
+  "author": "Naoko",
+  "license": "MIT",
+  "description": "Snarky weather widget with a 3-day forecast.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Statusphere",
+    "description": "Weather with a 3-day forecast and opinions",
+    "category": "Info",
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "defaults": {
+      "tone": "snarky",
+      "unit": "auto",
+      "refreshMinutes": 15
+    },
+    "schema": [
+      {
+        "key": "tone",
+        "type": "enum",
+        "label": "Personality",
+        "options": [
+          { "value": "friendly", "label": "Friendly" },
+          { "value": "snarky", "label": "Snarky" },
+          { "value": "unhinged", "label": "Unhinged" }
+        ],
+        "defaultValue": "snarky",
+        "description": "How much attitude the comment gets. Friendly is nice, Snarky is the default mix, Unhinged swears more."
+      },
+      {
+        "key": "unit",
+        "type": "enum",
+        "label": "Temperature unit",
+        "options": [
+          { "value": "auto", "label": "Auto (locale)" },
+          { "value": "metric", "label": "Celsius" },
+          { "value": "imperial", "label": "Fahrenheit" }
+        ],
+        "defaultValue": "auto",
+        "description": "The °C/°F button in the panel flips this for the current session without changing the setting."
+      },
+      {
+        "key": "refreshMinutes",
+        "type": "integer",
+        "label": "Refresh interval (minutes)",
+        "min": 5,
+        "max": 120,
+        "step": 5,
+        "defaultValue": 15
+      }
+    ]
+  }
+}
