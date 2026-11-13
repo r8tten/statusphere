@@ -30,9 +30,10 @@ Panel {
   property double lastUpdated: 0
   property double nowMs: Date.now()
   property string comment: ""
-  property bool unitOverride: false
+  property string unitOverride: ""
   property int retryCount: 0
   property bool refreshPending: false
+  property bool settingsPending: false
   property string weatherOutput: ""
   property bool weatherCollected: false
   property bool weatherExited: false
@@ -84,8 +85,8 @@ Panel {
     if (setting === "metric") return false
     return Model.localeUsesImperial(root.localeName)
   }
-  readonly property bool useImperial: root.unitOverride
-    ? !root.baseImperial : root.baseImperial
+  readonly property bool useImperial: root.unitOverride === "imperial"
+    ? true : root.unitOverride === "metric" ? false : root.baseImperial
   readonly property string toneSetting: {
     const value = String(root.setting("tone", "snarky")).toLowerCase()
     return value === "friendly" || value === "unhinged" ? value : "snarky"
@@ -236,6 +237,11 @@ Panel {
       ? tone : ""
   }
 
+  function validUnit(value) {
+    const unit = String(value || "").toLowerCase()
+    return unit === "metric" || unit === "imperial" ? unit : ""
+  }
+
   function setTone(value) {
     const tone = root.validTone(value)
     if (tone === "") return
@@ -250,26 +256,35 @@ Panel {
       const data = JSON.parse(String(raw || ""))
       if (!data || typeof data !== "object") return
       const tone = root.validTone(data.tone)
-      if (tone === "" || tone === root.toneOverride) return
-      root.toneOverride = tone
-      if (root.loaded) root.rerollComment()
+      if (tone !== "" && tone !== root.toneOverride) {
+        root.toneOverride = tone
+        if (root.loaded) root.rerollComment()
+      }
+      const unit = root.validUnit(data.unit)
+      if (unit !== root.unitOverride) root.unitOverride = unit
     } catch (error) {
     }
   }
 
-  function clearToneOverride() {
-    if (root.toneOverride === "") return
-    root.toneOverride = ""
-    if (root.loaded) root.rerollComment()
+  function clearOverrides() {
+    const hadTone = root.toneOverride !== ""
+    if (hadTone) root.toneOverride = ""
+    root.unitOverride = ""
+    if (hadTone && root.loaded) root.rerollComment()
   }
 
   function writeSettings() {
-    if (settingsWrite.running || root.toneOverride === "") return
-    const payload = JSON.stringify({ tone: root.toneOverride })
+    if (settingsWrite.running) {
+      root.settingsPending = true
+      return
+    }
+    const data = {}
+    if (root.toneOverride !== "") data.tone = root.toneOverride
+    if (root.unitOverride !== "") data.unit = root.unitOverride
     settingsWrite.command = ["/bin/sh", "-c",
       "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1.tmp\""
         + " && mv \"$1.tmp\" \"$1\"",
-      "sh", root.settingsPath, payload]
+      "sh", root.settingsPath, JSON.stringify(data)]
     settingsWrite.running = true
   }
 
@@ -1029,7 +1044,10 @@ Panel {
               anchors.fill: parent
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.unitOverride = !root.unitOverride
+              onClicked: {
+                root.unitOverride = root.useImperial ? "metric" : "imperial"
+                root.writeSettings()
+              }
             }
           }
         }
@@ -1146,6 +1164,13 @@ Panel {
 
   Process {
     id: settingsWrite
+
+    onExited: {
+      if (root.settingsPending) {
+        root.settingsPending = false
+        root.writeSettings()
+      }
+    }
   }
 
   Timer {
@@ -1216,7 +1241,7 @@ Panel {
 
     onFileChanged: reload()
     onLoaded: root.applySettings(text())
-    onLoadFailed: root.clearToneOverride()
+    onLoadFailed: root.clearOverrides()
   }
 
   Component.onCompleted: {

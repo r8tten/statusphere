@@ -9,7 +9,7 @@ forecast, and opinions about the weather.
 - Popup: location, large icon + temperature, `FEELS` line, a weather comment,
   a Friendly / Snarky / Unhinged tone selector, humidity / wind / rain tiles,
   a 3-day forecast, and a footer with the last update time, refresh, and a
-  session-only °C/°F toggle.
+  °C/°F toggle that remembers your choice.
 - Data: [Open-Meteo](https://open-meteo.com/) (no API key).
 - Location: the same `~/.local/state/omarchy/settings/weather.json` the rest of
   Omarchy uses. If it has no coordinates, Statusphere geocodes the saved name,
@@ -38,7 +38,7 @@ uses this plugin's `schema`, so the same keys can be changed there.
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `tone` | `friendly` / `snarky` / `unhinged` | `snarky` | How much attitude the comment gets. |
-| `unit` | `auto` / `metric` / `imperial` | `auto` | `auto` follows the locale. The panel's °C/°F button overrides it for the current session only. |
+| `unit` | `auto` / `metric` / `imperial` | `auto` | `auto` follows the locale. The panel's °C/°F button overrides it and remembers the choice. |
 | `refreshMinutes` | integer (5–120) | `15` | How often to refetch Open-Meteo. |
 
 Example entry:
@@ -51,15 +51,17 @@ The comment rerolls when the panel opens, when the weather refreshes, when you
 click it, or when you pick a different tone. Tone only affects the popup
 comment; the bar tooltip stays plain.
 
-Picking a tone in the panel writes only this plugin's own state file:
+Picking a tone or toggling °C/°F in the panel writes only this plugin's own
+state file:
 
 ```
 ~/.local/state/naoko.statusphere/settings.json
 ```
 
-It looks like `{ "tone": "unhinged" }` and takes precedence over the `tone`
-setting from then on. Delete that file to fall back to the configured default.
-Statusphere never writes to `~/.config/omarchy/shell.json`.
+It looks like `{ "tone": "unhinged", "unit": "metric" }` and takes precedence
+over the corresponding settings from then on. Delete that file to fall back to
+the configured defaults. Statusphere never writes to
+`~/.config/omarchy/shell.json`.
 
 ## Files
 
