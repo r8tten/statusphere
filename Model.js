@@ -207,6 +207,41 @@ function parseGeocode(raw) {
   }
 }
 
+function parseGeocodeResults(raw, limit) {
+  var data
+  try {
+    data = JSON.parse(String(raw || ""))
+  } catch (error) {
+    return []
+  }
+  if (!isObject(data) || !Array.isArray(data.results)) return []
+  var max = Number(limit)
+  if (!isFinite(max) || max < 1) max = 4
+  var results = []
+  for (var i = 0; i < data.results.length && results.length < max; i++) {
+    var result = data.results[i]
+    if (!isObject(result)) continue
+    var latitude = number(result.latitude, -90, 90)
+    var longitude = number(result.longitude, -180, 180)
+    if (latitude === null || longitude === null) continue
+    var name = typeof result.name === "string"
+      ? result.name.trim().slice(0, 120) : ""
+    if (name === "") continue
+    var parts = []
+    var region = typeof result.admin1 === "string" ? result.admin1.trim() : ""
+    var country = typeof result.country === "string" ? result.country.trim() : ""
+    if (region !== "" && region !== name) parts.push(region)
+    if (country !== "" && country !== name) parts.push(country)
+    results.push({
+      name: name,
+      latitude: latitude,
+      longitude: longitude,
+      detail: parts.join(", ")
+    })
+  }
+  return results
+}
+
 function localeUsesImperial(localeName) {
   var name = String(localeName || "").replace(".", "_")
   return /^en[_-]US($|[_.-])/.test(name)
@@ -242,6 +277,7 @@ if (typeof module !== "undefined") {
     parseWeather: parseWeather,
     parseLocation: parseLocation,
     parseGeocode: parseGeocode,
+    parseGeocodeResults: parseGeocodeResults,
     localeUsesImperial: localeUsesImperial,
     formatTemp: formatTemp,
     moodFor: moodFor,

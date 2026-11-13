@@ -5,15 +5,19 @@ forecast, and opinions about the weather.
 
 ![Statusphere preview](preview.png)
 
+![Statusphere settings](preview-settings.png)
+
 - Bar button: current condition glyph + temperature, with a hover tooltip.
 - Popup: location, large icon + temperature, `FEELS` line, a weather comment,
-  a Friendly / Snarky / Unhinged tone selector, humidity / wind / rain tiles,
-  a 3-day forecast, and a footer with the last update time, refresh, and a
-  °C/°F toggle that remembers your choice.
+  humidity / wind / rain tiles, a 3-day forecast, and a footer with the last
+  update time and refresh. The cog opens a settings page with **General**
+  (personality and units) and **Location** tabs.
 - Data: [Open-Meteo](https://open-meteo.com/) (no API key).
-- Location: the same `~/.local/state/omarchy/settings/weather.json` the rest of
-  Omarchy uses. If it has no coordinates, Statusphere geocodes the saved name,
-  then falls back to `https://geo.omarchy.org/`.
+- Location: a custom location saved by Statusphere takes precedence, then the
+  shared `~/.local/state/omarchy/settings/weather.json` the rest of Omarchy
+  uses. If neither has coordinates, Statusphere geocodes the saved name, then
+  falls back to `https://geo.omarchy.org/`. The Location tab can auto-detect
+  once or search for a place by name.
 - Cache: the last good response is kept in
   `~/.cache/naoko.statusphere/report.json` and shown (marked stale) if a refresh
   fails.
@@ -32,13 +36,14 @@ Requirements: Omarchy with Quickshell, and `curl`.
 
 ## Settings
 
-Settings are read from the widget's entry in `shell.json`. The settings panel
-uses this plugin's `schema`, so the same keys can be changed there.
+Defaults are read from the widget's entry in `shell.json`, and Omarchy's
+settings panel can edit the same keys through this plugin's `schema`. The
+in-popup settings page overrides tone and units locally.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `tone` | `friendly` / `snarky` / `unhinged` | `snarky` | How much attitude the comment gets. |
-| `unit` | `auto` / `metric` / `imperial` | `auto` | `auto` follows the locale. The panel's °C/°F button overrides it and remembers the choice. |
+| `unit` | `auto` / `metric` / `imperial` | `auto` | `auto` follows the locale. The General tab's units control overrides it and remembers the choice. |
 | `refreshMinutes` | integer (5–120) | `15` | How often to refetch Open-Meteo. |
 
 Example entry:
@@ -51,17 +56,34 @@ The comment rerolls when the panel opens, when the weather refreshes, when you
 click it, or when you pick a different tone. Tone only affects the popup
 comment; the bar tooltip stays plain.
 
-Picking a tone or toggling °C/°F in the panel writes only this plugin's own
-state file:
+The cog in the popup opens the settings page. **General** holds the personality
+and unit choices; **Location** shows the active source and lets you auto-detect
+once, return to Omarchy's location, or search for a place by name. Closing the
+popup returns the page to General.
+
+Picking a tone, changing units, or choosing a location writes only this
+plugin's own state file:
 
 ```
 ~/.local/state/naoko.statusphere/settings.json
 ```
 
-It looks like `{ "tone": "unhinged", "unit": "metric" }` and takes precedence
-over the corresponding settings from then on. Delete that file to fall back to
-the configured defaults. Statusphere never writes to
-`~/.config/omarchy/shell.json`.
+It looks like:
+
+```json
+{
+  "tone": "unhinged",
+  "unit": "metric",
+  "location": { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
+  "locationSource": "manual"
+}
+```
+
+Those values take precedence over the corresponding settings from then on.
+`locationSource` is `manual` or `auto`; omit `location` to follow Omarchy's
+shared location again. Delete the file to fall back to the configured defaults.
+Statusphere never writes to `~/.config/omarchy/shell.json` or to Omarchy's
+shared `weather.json`.
 
 ## Files
 

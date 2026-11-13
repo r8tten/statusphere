@@ -9,8 +9,9 @@ import "Model.js" as Model
 import "Snark.js" as Snark
 
 // Statusphere — a bar-sized weather widget with a Carrot-style hero, a 3-day
-// forecast, and a personality. Data comes from Open-Meteo; the location is
-// shared with the rest of Omarchy through weather.json.
+// forecast, and a personality. Data comes from Open-Meteo. The location is
+// Omarchy's shared weather.json unless the in-popup Location tab saves an
+// override in the plugin's own state.
 Panel {
   id: root
 
@@ -23,6 +24,15 @@ Panel {
   property var weather: null
   property var locationState: ({ name: "", latitude: null, longitude: null })
   property var detectedLocation: ({ name: "", latitude: null, longitude: null })
+  property var customLocation: ({ name: "", latitude: null, longitude: null })
+  property string locationSource: ""
+  property bool settingsOpen: false
+  property string settingsTab: "general"
+  property var geocodeResults: []
+  property bool locationBusy: false
+  property string locationError: ""
+  property string detectMode: "fallback"
+  property string searchOutput: ""
   property bool locationAttempted: false
   property bool loaded: false
   property bool unavailable: false
@@ -47,14 +57,26 @@ Panel {
   readonly property string settingsPath: Quickshell.env("HOME")
     + "/.local/state/naoko.statusphere/settings.json"
   readonly property var toneChoices: [
-    { value: "friendly", label: "Friendly" },
-    { value: "snarky", label: "Snarky" },
-    { value: "unhinged", label: "Unhinged" }
+    { value: "friendly", label: "Friendly",
+      description: "Nice weather commentary, no attitude." },
+    { value: "snarky", label: "Snarky",
+      description: "Mostly friendly, occasionally rude." },
+    { value: "unhinged", label: "Unhinged",
+      description: "Swears when the weather deserves it." }
+  ]
+  readonly property var unitChoices: [
+    { value: "", label: "Auto" },
+    { value: "metric", label: "\u00b0C" },
+    { value: "imperial", label: "\u00b0F" }
   ]
   readonly property var currentWeather: root.weather ? root.weather.current : null
   readonly property var forecast: root.weather
     && Array.isArray(root.weather.daily) ? root.weather.daily : []
+  readonly property bool hasCustomLocation: root.customLocation
+    && root.customLocation.latitude !== null
+    && root.customLocation.longitude !== null
   readonly property var effectiveLocation: {
+    if (root.hasCustomLocation) return root.customLocation
     if (root.locationState
         && root.locationState.latitude !== null
         && root.locationState.longitude !== null)
@@ -69,11 +91,33 @@ Panel {
   readonly property real longitude: parseFloat(String(root.effectiveLocation.longitude))
   readonly property bool hasCoordinates: !isNaN(root.latitude) && !isNaN(root.longitude)
   readonly property string displayLocation: {
+    if (root.hasCustomLocation && String(root.customLocation.name || "") !== "")
+      return String(root.customLocation.name)
     const configured = root.locationState
       ? String(root.locationState.name || "").trim() : ""
     const detected = root.detectedLocation
       ? String(root.detectedLocation.name || "").trim() : ""
     return configured || detected || "Your location"
+  }
+  readonly property string locationCoords: {
+    const location = root.effectiveLocation
+    if (!location || location.latitude === null || location.longitude === null)
+      return ""
+    return Number(location.latitude).toFixed(2) + ", "
+      + Number(location.longitude).toFixed(2)
+  }
+  readonly property string locationSourceLabel: {
+    if (root.hasCustomLocation)
+      return root.locationSource === "auto" ? "Auto-detected" : "Custom location"
+    if (root.locationState
+        && root.locationState.latitude !== null
+        && root.locationState.longitude !== null)
+      return "Omarchy location"
+    if (root.detectedLocation
+        && root.detectedLocation.latitude !== null
+        && root.detectedLocation.longitude !== null)
+      return "Auto-detected"
+    return "Not set"
   }
   readonly property string localeName: {
     const value = String(Commons.I18n.formatLocale || "")
@@ -262,15 +306,33 @@ Panel {
       }
       const unit = root.validUnit(data.unit)
       if (unit !== root.unitOverride) root.unitOverride = unit
+      const location = Model.parseLocation(JSON.stringify(data.location || {}))
+      if (location.latitude !== null && location.longitude !== null) {
+        const changed = !root.hasCustomLocation
+          || root.customLocation.latitude !== location.latitude
+          || root.customLocation.longitude !== location.longitude
+          || String(root.customLocation.name || "") !== location.name
+        root.customLocation = location
+        root.locationSource = data.locationSource === "auto" ? "auto" : "manual"
+        if (changed) root.refresh(true)
+      } else if (root.hasCustomLocation) {
+        root.customLocation = { name: "", latitude: null, longitude: null }
+        root.locationSource = ""
+        root.refresh(true)
+      }
     } catch (error) {
     }
   }
 
   function clearOverrides() {
     const hadTone = root.toneOverride !== ""
+    const hadLocation = root.hasCustomLocation
     if (hadTone) root.toneOverride = ""
     root.unitOverride = ""
+    root.customLocation = { name: "", latitude: null, longitude: null }
+    root.locationSource = ""
     if (hadTone && root.loaded) root.rerollComment()
+    if (hadLocation && root.loaded) root.refresh(true)
   }
 
   function writeSettings() {
@@ -281,6 +343,14 @@ Panel {
     const data = {}
     if (root.toneOverride !== "") data.tone = root.toneOverride
     if (root.unitOverride !== "") data.unit = root.unitOverride
+    if (root.hasCustomLocation) {
+      data.location = {
+        name: root.customLocation.name,
+        latitude: root.customLocation.latitude,
+        longitude: root.customLocation.longitude
+      }
+      if (root.locationSource !== "") data.locationSource = root.locationSource
+    }
     settingsWrite.command = ["/bin/sh", "-c",
       "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1.tmp\""
         + " && mv \"$1.tmp\" \"$1\"",
@@ -390,11 +460,12 @@ Panel {
     root.locationState = parsed
     if (parsed.latitude !== null && parsed.longitude !== null) {
       root.locationAttempted = true
-      root.refresh(true)
+      if (!root.hasCustomLocation) root.refresh(true)
       return
     }
     if (root.locationAttempted) return
     root.locationAttempted = true
+    if (root.hasCustomLocation) return
     if (parsed.name !== "") root.geocodeLocation(parsed.name)
     else root.detectLocation()
   }
@@ -412,7 +483,99 @@ Panel {
 
   function detectLocation() {
     if (detectProc.running) return
+    root.detectMode = "fallback"
     detectProc.running = true
+  }
+
+  // --- Settings / location ------------------------------------------------
+
+  function setCustomLocation(name, latitude, longitude, source) {
+    const location = Model.parseLocation(JSON.stringify({
+      name: name, latitude: latitude, longitude: longitude
+    }))
+    if (location.latitude === null || location.longitude === null) {
+      root.locationError = "That location could not be saved."
+      return
+    }
+    root.customLocation = location
+    root.locationSource = source === "auto" ? "auto" : "manual"
+    root.locationError = ""
+    root.geocodeResults = []
+    root.writeSettings()
+    root.refresh(true)
+  }
+
+  function clearCustomLocation() {
+    if (!root.hasCustomLocation) return
+    root.customLocation = { name: "", latitude: null, longitude: null }
+    root.locationSource = ""
+    root.locationError = ""
+    root.geocodeResults = []
+    root.writeSettings()
+    root.locationAttempted = false
+    locationFile.reload()
+    root.refresh(true)
+  }
+
+  function searchLocation(query) {
+    const text = String(query || "").trim()
+    if (text.length < 2) {
+      root.geocodeResults = []
+      root.locationError = text === "" ? "" : "Type at least 2 characters."
+      return
+    }
+    if (searchProc.running) return
+    root.locationBusy = true
+    root.locationError = ""
+    root.geocodeResults = []
+    root.searchOutput = ""
+    searchProc.command = ["curl", "-fsS", "--max-time", "6",
+      "--max-filesize", "131072",
+      "https://geocoding-api.open-meteo.com/v1/search?name="
+        + encodeURIComponent(text) + "&count=4&language=en&format=json"]
+    searchProc.running = true
+  }
+
+  function chooseGeocodeResult(result) {
+    if (!result) return
+    root.setCustomLocation(result.name, result.latitude, result.longitude,
+      "manual")
+    if (typeof searchField !== "undefined") searchField.text = ""
+  }
+
+  function autoDetectCustomLocation() {
+    if (detectProc.running) return
+    root.detectMode = "custom"
+    root.locationBusy = true
+    root.locationError = ""
+    root.geocodeResults = []
+    detectProc.running = true
+  }
+
+  function toggleSettings() {
+    if (root.settingsOpen) {
+      root.closeSettings()
+      return
+    }
+    root.settingsOpen = true
+    root.settingsTab = "general"
+    root.locationError = ""
+    root.geocodeResults = []
+  }
+
+  function closeSettings() {
+    root.settingsOpen = false
+    root.settingsTab = "general"
+    root.locationBusy = false
+    root.locationError = ""
+    root.geocodeResults = []
+  }
+
+  function switchSettingsTab(tab) {
+    root.settingsTab = String(tab || "").toLowerCase() === "location"
+      ? "location" : "general"
+    root.locationError = ""
+    root.geocodeResults = []
   }
 
   function retryAll() {
@@ -460,6 +623,8 @@ Panel {
     open: root.opened
     gap: Style.space(4)
     focusTarget: panel.loadedContent
+    borderSpec: Border.surfaceSpec("popups", "border",
+      Commons.Color.popups.border, Style.space(3))
 
     contentWidth: panel.fittedContentWidth(Style.space(344))
     contentHeight: panel.fittedContentHeight(panel.loadedContentHeight,
@@ -470,10 +635,20 @@ Panel {
 
       anchors.fill: parent
       implicitHeight: contentColumn.implicitHeight
+      blocked: searchField.activeFocus
 
-      onCloseRequested: root.close()
-      onReturnRequested: root.rerollComment()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
+      onCloseRequested: root.settingsOpen ? root.closeSettings() : root.close()
+      onReturnRequested: {
+        if (!root.settingsOpen) root.rerollComment()
+      }
+      onTabRequested: function(direction) {
+        if (root.settingsOpen) {
+          root.switchSettingsTab(root.settingsTab === "general"
+            ? "location" : "general")
+        } else {
+          root.switchPanel(direction)
+        }
+      }
 
       // One atmospheric wash for the whole card. It extends under the panel
       // padding; the card clips it to the rounded corners, and the alpha lets
@@ -483,7 +658,7 @@ Panel {
 
         anchors.fill: parent
         anchors.margins: -panel.padding
-        radius: Style.cornerRadius
+        radius: Math.max(0, Style.cornerRadius - Style.space(3))
         gradient: Gradient {
           orientation: Gradient.Vertical
           GradientStop { position: 0.0; color: root.heroTop }
@@ -492,11 +667,11 @@ Panel {
         }
       }
 
-      // A hairline just inside the accent border so the gradient has a defined
-      // edge of its own instead of butting straight into the card frame.
+      // Hairline flush against the accent border: no gap, and its radius
+      // follows the wash so it stays parallel around the corners too.
       Rectangle {
         anchors.fill: wash
-        radius: Style.cornerRadius
+        radius: wash.radius
         color: "transparent"
         border.width: 2
         border.color: Commons.Util.alpha(root.ink, 0.12)
@@ -508,26 +683,58 @@ Panel {
         width: parent.width
         spacing: Style.space(10)
 
-        // --- Location + close -------------------------------------------
+        // --- Header -----------------------------------------------------
 
         Item {
           width: parent.width
           implicitHeight: Math.max(locationLabel.implicitHeight,
             closeButton.height)
 
+          CursorSurface {
+            id: settingsButton
+
+            width: Style.space(22)
+            height: width
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            hasCursor: settingsArea.containsMouse
+            foreground: root.ink
+            accent: root.accent
+
+            Text {
+              anchors.centerIn: parent
+              textFormat: Text.PlainText
+              text: root.settingsOpen ? "\udb81\udc5a" : "\ueb51"
+              color: settingsButton.hasCursor ? root.ink : root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.title
+              renderType: Text.NativeRendering
+            }
+
+            MouseArea {
+              id: settingsArea
+
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.toggleSettings()
+            }
+          }
+
           Text {
             id: locationLabel
 
             anchors.centerIn: parent
-            width: Math.min(implicitWidth,
-              parent.width - closeButton.width - Style.space(18))
+            width: Math.min(implicitWidth, parent.width - settingsButton.width
+              - closeButton.width - Style.space(24))
             textFormat: Text.PlainText
-            text: root.displayLocation
+            text: root.settingsOpen ? "SETTINGS" : root.displayLocation
             elide: Text.ElideRight
             color: root.ink
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
             font.bold: true
+            font.letterSpacing: root.settingsOpen ? 1.5 : 0
             renderType: Text.NativeRendering
           }
 
@@ -545,10 +752,10 @@ Panel {
             Text {
               anchors.centerIn: parent
               textFormat: Text.PlainText
-              text: "\udb80\udc56"
+              text: "\uf00d"
               color: closeButton.hasCursor ? root.ink : root.mutedInk
               font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
+              font.pixelSize: Style.font.title
               renderType: Text.NativeRendering
             }
 
@@ -563,10 +770,70 @@ Panel {
           }
         }
 
+        // --- Settings tabs ----------------------------------------------
+
+        Row {
+          id: tabBar
+
+          visible: root.settingsOpen
+          width: parent.width
+          height: Style.space(26)
+          spacing: Style.space(6)
+
+          Repeater {
+            model: [
+              { value: "general", label: "GENERAL" },
+              { value: "location", label: "LOCATION" }
+            ]
+
+            delegate: Rectangle {
+              id: tabButton
+
+              required property var modelData
+
+              readonly property bool selected: root.settingsTab
+                === tabButton.modelData.value
+              readonly property bool hovered: tabMouse.containsMouse
+
+              width: (tabBar.width - tabBar.spacing) / 2
+              height: tabBar.height
+              radius: Style.space(8)
+              color: tabButton.selected ? root.activeFill
+                : tabButton.hovered
+                  ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
+              border.width: 1
+              border.color: tabButton.selected
+                ? root.accent : root.tileBorder
+
+              Text {
+                anchors.centerIn: parent
+                textFormat: Text.PlainText
+                text: tabButton.modelData.label
+                color: tabButton.selected ? root.accent
+                  : tabButton.hovered ? root.ink : root.mutedInk
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                font.letterSpacing: 1.1
+                renderType: Text.NativeRendering
+              }
+
+              MouseArea {
+                id: tabMouse
+
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.switchSettingsTab(tabButton.modelData.value)
+              }
+            }
+          }
+        }
+
         // --- Loading / empty state --------------------------------------
 
         Column {
-          visible: !root.loaded
+          visible: !root.loaded && !root.settingsOpen
           width: parent.width
           spacing: Style.space(8)
 
@@ -649,7 +916,7 @@ Panel {
         Item {
           id: hero
 
-          visible: root.loaded
+          visible: root.loaded && !root.settingsOpen
           width: parent.width
           implicitHeight: Math.max(heroRow.implicitHeight + Style.space(30),
             Style.space(150))
@@ -723,7 +990,7 @@ Panel {
         // --- Snark ------------------------------------------------------
 
         Item {
-          visible: root.loaded
+          visible: root.loaded && !root.settingsOpen
           width: parent.width
           implicitHeight: commentText.implicitHeight
 
@@ -756,90 +1023,12 @@ Panel {
           }
         }
 
-        // --- Comment tone ----------------------------------------------
-
-        Row {
-          id: toneRow
-
-          visible: root.loaded
-          width: parent.width
-          height: Style.space(24)
-          spacing: Style.space(8)
-
-          Text {
-            id: toneLabel
-
-            anchors.verticalCenter: parent.verticalCenter
-            textFormat: Text.PlainText
-            text: "TONE"
-            color: root.mutedInk
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            font.bold: true
-            font.letterSpacing: 1.2
-            renderType: Text.NativeRendering
-          }
-
-          Row {
-            id: toneButtons
-
-            anchors.verticalCenter: parent.verticalCenter
-            width: toneRow.width - toneLabel.implicitWidth - toneRow.spacing
-            spacing: Style.space(6)
-
-            Repeater {
-              model: root.toneChoices
-
-              delegate: Rectangle {
-                id: toneButton
-
-                required property var modelData
-
-                readonly property bool selected: root.activeTone
-                  === String(toneButton.modelData.value)
-                readonly property bool hovered: toneMouse.containsMouse
-
-                width: (toneButtons.width - toneButtons.spacing * 2) / 3
-                height: toneRow.height
-                radius: Style.space(8)
-                color: toneButton.selected ? root.activeFill
-                  : toneButton.hovered
-                    ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
-                border.width: 1
-                border.color: toneButton.selected
-                  ? root.accent : root.tileBorder
-
-                Text {
-                  anchors.centerIn: parent
-                  textFormat: Text.PlainText
-                  text: toneButton.modelData.label
-                  color: toneButton.selected ? root.accent
-                    : toneButton.hovered ? root.ink : root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  renderType: Text.NativeRendering
-                }
-
-                MouseArea {
-                  id: toneMouse
-
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: root.setTone(toneButton.modelData.value)
-                }
-              }
-            }
-          }
-        }
-
         // --- Current details -------------------------------------------
 
         Row {
           id: statsRow
 
-          visible: root.loaded
+          visible: root.loaded && !root.settingsOpen
           width: parent.width
           spacing: Style.space(8)
 
@@ -865,7 +1054,7 @@ Panel {
         // --- Forecast ---------------------------------------------------
 
         Column {
-          visible: root.loaded && root.forecast.length > 0
+          visible: root.loaded && !root.settingsOpen && root.forecast.length > 0
           width: parent.width
           spacing: Style.space(6)
 
@@ -964,7 +1153,7 @@ Panel {
         // --- Footer -----------------------------------------------------
 
         Row {
-          visible: root.loaded
+          visible: root.loaded && !root.settingsOpen
           width: parent.width
           height: Style.space(24)
           spacing: Style.space(6)
@@ -983,7 +1172,7 @@ Panel {
 
           Item {
             width: Math.max(0, parent.width - updatedLabel.implicitWidth
-              - refreshButton.width - unitButton.width - parent.spacing * 2)
+              - refreshButton.width - parent.spacing)
             height: 1
           }
 
@@ -1016,37 +1205,482 @@ Panel {
               onClicked: root.refresh(true)
             }
           }
+        }
 
-          CursorSurface {
-            id: unitButton
+        // --- Settings ---------------------------------------------------
 
-            width: Style.space(34)
-            height: Style.space(22)
-            anchors.verticalCenter: parent.verticalCenter
-            hasCursor: unitArea.containsMouse
-            foreground: root.ink
-            accent: root.accent
+        Column {
+          id: settingsBody
+
+          visible: root.settingsOpen
+          width: parent.width
+          spacing: Style.space(10)
+
+          // --- General --------------------------------------------------
+
+          Column {
+            visible: root.settingsTab === "general"
+            width: parent.width
+            spacing: Style.space(6)
 
             Text {
-              anchors.centerIn: parent
               textFormat: Text.PlainText
-              text: root.useImperial ? "\u00b0F" : "\u00b0C"
-              color: unitButton.hasCursor ? root.accent : root.mutedInk
+              text: "PERSONALITY"
+              color: root.mutedInk
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
               font.bold: true
+              font.letterSpacing: 1.2
               renderType: Text.NativeRendering
             }
 
-            MouseArea {
-              id: unitArea
+            Column {
+              width: parent.width
+              spacing: Style.space(5)
 
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                root.unitOverride = root.useImperial ? "metric" : "imperial"
-                root.writeSettings()
+              Repeater {
+                model: root.toneChoices
+
+                delegate: Rectangle {
+                  id: toneCard
+
+                  required property var modelData
+
+                  readonly property bool selected: root.activeTone
+                    === String(toneCard.modelData.value)
+                  readonly property bool hovered: toneCardMouse.containsMouse
+
+                  width: parent.width
+                  height: Style.space(42)
+                  radius: Style.space(8)
+                  color: toneCard.selected ? root.activeFill
+                    : toneCard.hovered
+                      ? Commons.Util.alpha(root.ink, 0.07) : root.tileFill
+                  border.width: 1
+                  border.color: toneCard.selected
+                    ? root.accent : root.tileBorder
+
+                  Column {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Style.space(10)
+                    anchors.rightMargin: Style.space(10)
+                    spacing: Style.space(1)
+
+                    Text {
+                      width: parent.width
+                      textFormat: Text.PlainText
+                      text: toneCard.modelData.label
+                      color: toneCard.selected ? root.accent : root.ink
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                      font.bold: true
+                      elide: Text.ElideRight
+                      renderType: Text.NativeRendering
+                    }
+
+                    Text {
+                      width: parent.width
+                      textFormat: Text.PlainText
+                      text: toneCard.modelData.description
+                      color: root.mutedInk
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      elide: Text.ElideRight
+                      renderType: Text.NativeRendering
+                    }
+                  }
+
+                  MouseArea {
+                    id: toneCardMouse
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.setTone(toneCard.modelData.value)
+                  }
+                }
+              }
+            }
+
+            Item { width: 1; height: Style.space(2) }
+
+            Text {
+              textFormat: Text.PlainText
+              text: "UNITS"
+              color: root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              font.letterSpacing: 1.2
+              renderType: Text.NativeRendering
+            }
+
+            Row {
+              id: unitRow
+
+              width: parent.width
+              spacing: Style.space(6)
+
+              Repeater {
+                model: root.unitChoices
+
+                delegate: Rectangle {
+                  id: unitPill
+
+                  required property var modelData
+
+                  readonly property bool selected: root.unitOverride
+                    === String(unitPill.modelData.value)
+                  readonly property bool hovered: unitMouse.containsMouse
+
+                  width: (unitRow.width - unitRow.spacing * 2) / 3
+                  height: Style.space(28)
+                  radius: Style.space(8)
+                  color: unitPill.selected ? root.activeFill
+                    : unitPill.hovered
+                      ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
+                  border.width: 1
+                  border.color: unitPill.selected
+                    ? root.accent : root.tileBorder
+
+                  Text {
+                    anchors.centerIn: parent
+                    textFormat: Text.PlainText
+                    text: unitPill.modelData.label
+                    color: unitPill.selected ? root.accent
+                      : unitPill.hovered ? root.ink : root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    renderType: Text.NativeRendering
+                  }
+
+                  MouseArea {
+                    id: unitMouse
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                      root.unitOverride = String(unitPill.modelData.value)
+                      root.writeSettings()
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // --- Location -------------------------------------------------
+
+          Column {
+            visible: root.settingsTab === "location"
+            width: parent.width
+            spacing: Style.space(7)
+
+            Text {
+              textFormat: Text.PlainText
+              text: "CURRENT LOCATION"
+              color: root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              font.letterSpacing: 1.2
+              renderType: Text.NativeRendering
+            }
+
+            Rectangle {
+              width: parent.width
+              height: currentColumn.implicitHeight + Style.space(18)
+              radius: Style.space(10)
+              color: root.tileFill
+              border.width: 1
+              border.color: root.tileBorder
+
+              Column {
+                id: currentColumn
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: Style.space(10)
+                anchors.rightMargin: Style.space(10)
+                spacing: Style.space(2)
+
+                Text {
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: root.displayLocation
+                  color: root.ink
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  font.bold: true
+                  elide: Text.ElideRight
+                  renderType: Text.NativeRendering
+                }
+
+                Text {
+                  visible: root.locationCoords !== ""
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: root.locationCoords
+                  color: root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideRight
+                  renderType: Text.NativeRendering
+                }
+
+                Text {
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: root.locationSourceLabel.toUpperCase()
+                  color: root.faintInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.0
+                  elide: Text.ElideRight
+                  renderType: Text.NativeRendering
+                }
+              }
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(6)
+
+              Rectangle {
+                id: detectButton
+
+                readonly property bool hovered: detectMouse.containsMouse
+
+                width: root.hasCustomLocation
+                  ? (parent.width - parent.spacing) / 2 : parent.width
+                height: Style.space(28)
+                radius: Style.space(8)
+                color: detectButton.hovered
+                  ? root.activeFill : root.tileFill
+                border.width: 1
+                border.color: detectButton.hovered
+                  ? root.accent : root.tileBorder
+
+                Text {
+                  anchors.centerIn: parent
+                  textFormat: Text.PlainText
+                  text: root.locationBusy && root.detectMode === "custom"
+                    ? "Detecting\u2026" : "Auto-detect"
+                  color: detectButton.hovered ? root.accent : root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  renderType: Text.NativeRendering
+                }
+
+                MouseArea {
+                  id: detectMouse
+
+                  anchors.fill: parent
+                  enabled: !root.locationBusy
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.autoDetectCustomLocation()
+                }
+              }
+
+              Rectangle {
+                id: omarchyButton
+
+                visible: root.hasCustomLocation
+                readonly property bool hovered: omarchyMouse.containsMouse
+
+                width: (parent.width - parent.spacing) / 2
+                height: Style.space(28)
+                radius: Style.space(8)
+                color: omarchyButton.hovered
+                  ? root.activeFill : root.tileFill
+                border.width: 1
+                border.color: omarchyButton.hovered
+                  ? root.accent : root.tileBorder
+
+                Text {
+                  anchors.centerIn: parent
+                  width: parent.width - Style.space(12)
+                  horizontalAlignment: Text.AlignHCenter
+                  textFormat: Text.PlainText
+                  text: "Use Omarchy location"
+                  color: omarchyButton.hovered
+                    ? root.accent : root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  elide: Text.ElideRight
+                  renderType: Text.NativeRendering
+                }
+
+                MouseArea {
+                  id: omarchyMouse
+
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.clearCustomLocation()
+                }
+              }
+            }
+
+            Item { width: 1; height: Style.space(2) }
+
+            Text {
+              textFormat: Text.PlainText
+              text: "SEARCH"
+              color: root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              font.letterSpacing: 1.2
+              renderType: Text.NativeRendering
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(6)
+
+              TextField {
+                id: searchField
+
+                width: parent.width - searchButton.width - parent.spacing
+                height: Style.space(30)
+                foreground: root.ink
+                accent: root.accent
+                placeholderText: "Search for a city\u2026"
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+                verticalPadding: Style.space(6)
+                onAccepted: root.searchLocation(text)
+                Keys.onEscapePressed: focus = false
+              }
+
+              Rectangle {
+                id: searchButton
+
+                readonly property bool hovered: searchMouse.containsMouse
+
+                width: Style.space(60)
+                height: Style.space(30)
+                radius: Style.space(8)
+                color: searchButton.hovered
+                  ? root.activeFill : root.tileFill
+                border.width: 1
+                border.color: searchButton.hovered
+                  ? root.accent : root.tileBorder
+
+                Text {
+                  anchors.centerIn: parent
+                  textFormat: Text.PlainText
+                  text: "SEARCH"
+                  color: searchButton.hovered ? root.accent : root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.0
+                  renderType: Text.NativeRendering
+                }
+
+                MouseArea {
+                  id: searchMouse
+
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.searchLocation(searchField.text)
+                }
+              }
+            }
+
+            Text {
+              visible: root.locationError !== "" || root.locationBusy
+              width: parent.width
+              wrapMode: Text.WordWrap
+              textFormat: Text.PlainText
+              text: root.locationBusy
+                ? (root.detectMode === "custom"
+                  ? "Detecting\u2026" : "Searching\u2026")
+                : root.locationError
+              color: root.locationBusy ? root.mutedInk : root.accent
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              renderType: Text.NativeRendering
+            }
+
+            Column {
+              visible: root.geocodeResults.length > 0
+              width: parent.width
+              spacing: Style.space(4)
+
+              Repeater {
+                model: root.geocodeResults
+
+                delegate: Rectangle {
+                  id: resultRow
+
+                  required property var modelData
+
+                  readonly property bool hovered: resultMouse.containsMouse
+
+                  width: parent.width
+                  height: Style.space(36)
+                  radius: Style.space(8)
+                  color: resultRow.hovered
+                    ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
+                  border.width: 1
+                  border.color: resultRow.hovered
+                    ? root.accent : root.tileBorder
+
+                  Column {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Style.space(10)
+                    anchors.rightMargin: Style.space(10)
+                    spacing: Style.space(1)
+
+                    Text {
+                      width: parent.width
+                      textFormat: Text.PlainText
+                      text: resultRow.modelData.name
+                      color: resultRow.hovered ? root.accent : root.ink
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                      font.bold: true
+                      elide: Text.ElideRight
+                      renderType: Text.NativeRendering
+                    }
+
+                    Text {
+                      visible: String(resultRow.modelData.detail || "") !== ""
+                      width: parent.width
+                      textFormat: Text.PlainText
+                      text: String(resultRow.modelData.detail || "")
+                      color: root.mutedInk
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      elide: Text.ElideRight
+                      renderType: Text.NativeRendering
+                    }
+                  }
+
+                  MouseArea {
+                    id: resultMouse
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.chooseGeocodeResult(resultRow.modelData)
+                  }
+                }
               }
             }
           }
@@ -1129,10 +1763,10 @@ Panel {
         const location = Model.parseGeocode(text)
         if (location) {
           root.locationState = location
-          root.refresh(true)
+          if (!root.hasCustomLocation) root.refresh(true)
           return
         }
-        root.unavailable = true
+        if (!root.hasCustomLocation) root.unavailable = true
       }
     }
   }
@@ -1145,16 +1779,48 @@ Panel {
 
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: {
-        root.detectOutput = text
-        const location = Model.parseLocation(text)
-        if (location.latitude !== null && location.longitude !== null) {
-          root.detectedLocation = location
-          root.refresh(true)
-          return
-        }
-        root.unavailable = true
+      onStreamFinished: root.detectOutput = text
+    }
+
+    onExited: function(exitCode) {
+      const custom = root.detectMode === "custom"
+      root.detectMode = "fallback"
+      if (custom) root.locationBusy = false
+      const location = Model.parseLocation(root.detectOutput)
+      if (exitCode !== 0 || location.latitude === null
+          || location.longitude === null) {
+        if (custom) root.locationError = "Couldn't detect your location."
+        else if (!root.hasCustomLocation) root.unavailable = true
+        return
       }
+      if (custom) {
+        root.setCustomLocation(location.name, location.latitude,
+          location.longitude, "auto")
+        return
+      }
+      root.detectedLocation = location
+      if (!root.hasCustomLocation) root.refresh(true)
+    }
+  }
+
+  Process {
+    id: searchProc
+
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.searchOutput = text
+    }
+
+    onExited: function(exitCode) {
+      root.locationBusy = false
+      if (exitCode !== 0) {
+        root.geocodeResults = []
+        root.locationError = "Search failed. Check your connection."
+        return
+      }
+      const results = Model.parseGeocodeResults(root.searchOutput)
+      root.geocodeResults = results
+      root.locationError = results.length === 0 ? "No places found." : ""
     }
   }
 
@@ -1256,6 +1922,8 @@ Panel {
       root.nowMs = Date.now()
       root.refresh(true)
       if (root.loaded) root.rerollComment()
+    } else {
+      root.closeSettings()
     }
   }
 }
