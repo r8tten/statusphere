@@ -29,14 +29,32 @@ forecast, and opinions about the weather.
 ## Install
 
 ```bash
-git clone https://github.com/r8tten/statusphere.git \
-  ~/.config/omarchy/plugins/naoko.statusphere
+omarchy plugin add https://github.com/r8tten/statusphere.git --enable
+omarchy restart shell
 ```
 
-Then add **Statusphere** to the bar from the Omarchy bar settings. Do not add it
-by hand unless you already edit `~/.config/omarchy/shell.json`.
+`--enable` turns Statusphere on and asks where to put it in the bar; the default
+is the right side. Add `--yes` to accept the default without the prompt.
 
 Requirements: Omarchy with Quickshell, and `curl`.
+
+## Update
+
+```bash
+omarchy plugin update naoko.statusphere
+omarchy restart shell
+```
+
+## Remove
+
+```bash
+omarchy plugin remove naoko.statusphere
+omarchy restart shell
+```
+
+Removing the plugin leaves your settings in
+`~/.local/state/naoko.statusphere/settings.json`; delete that file as well for a
+clean slate.
 
 ## Settings
 
