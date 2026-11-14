@@ -282,7 +282,8 @@ Panel {
       humidity: root.currentWeather.humidity,
       windKmh: root.currentWeather.windKmh,
       rain: root.forecast.length > 0 ? root.forecast[0].rain : 0,
-      description: root.currentWeather.description
+      description: root.currentWeather.description,
+      dayKey: Qt.formatDate(new Date(root.nowMs), "MM-dd")
     }
   }
 

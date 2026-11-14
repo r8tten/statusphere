@@ -58,7 +58,10 @@ Example entry:
 
 The comment rerolls when the panel opens, when the weather refreshes, when you
 click it, or when you pick a different tone. Tone only affects the popup
-comment; the bar tooltip stays plain.
+comment; the bar tooltip stays plain. Comments come from a pack for the current
+weather, with separate friendly, rude, and profane lines. On 24–26 December,
+31 December–1 January, and 31 October, a holiday pack (Christmas, New Year,
+Halloween) takes over for the day.
 
 The cog in the popup opens the settings page. **General** holds the personality
 and unit choices. **Appearance** controls the popup's gradient and weather
