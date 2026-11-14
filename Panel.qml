@@ -51,6 +51,12 @@ Panel {
   property string geocodeOutput: ""
   property string detectOutput: ""
   property string pendingLocationName: ""
+  property string gradientMode: "weather"
+  property real gradientHue: 0
+  property real gradientSat: 0
+  property bool gradientSeeded: false
+  property bool gradientDragging: false
+  property bool effectsEnabled: true
 
   readonly property string cachePath: Quickshell.env("HOME")
     + "/.cache/naoko.statusphere/report.json"
@@ -69,9 +75,20 @@ Panel {
     { value: "metric", label: "\u00b0C" },
     { value: "imperial", label: "\u00b0F" }
   ]
+  readonly property var settingsTabChoices: [
+    { value: "general", label: "GENERAL" },
+    { value: "appearance", label: "APPEARANCE" },
+    { value: "location", label: "LOCATION" }
+  ]
   readonly property var currentWeather: root.weather ? root.weather.current : null
   readonly property var forecast: root.weather
     && Array.isArray(root.weather.daily) ? root.weather.daily : []
+  readonly property string effectKind: root.currentWeather
+    ? Model.effectForCode(root.currentWeather.code, root.currentWeather.isDay)
+    : ""
+  readonly property bool effectsActive: root.effectsEnabled && root.opened
+    && root.loaded && !root.unavailable && !root.settingsOpen
+    && root.effectKind !== ""
   readonly property bool hasCustomLocation: root.customLocation
     && root.customLocation.latitude !== null
     && root.customLocation.longitude !== null
@@ -160,9 +177,12 @@ Panel {
     ? Model.moodFor(root.currentWeather.code, root.currentWeather.tempC,
         root.currentWeather.humidity, root.currentWeather.windKmh)
     : ({ hue: 0.04, sat: 1.0 })
-  readonly property real heroHue: (root.accent.hslHue + root.mood.hue + 1) % 1
-  readonly property real heroSat: Math.min(1, Math.max(0,
-    root.accent.hslSaturation * root.mood.sat))
+  readonly property real heroHue: root.gradientMode === "custom"
+    ? root.gradientHue / 360
+    : (root.accent.hslHue + root.mood.hue + 1) % 1
+  readonly property real heroSat: root.gradientMode === "custom"
+    ? Math.min(1, Math.max(0, root.gradientSat / 100))
+    : Math.min(1, Math.max(0, root.accent.hslSaturation * root.mood.sat))
   readonly property color heroTop: Qt.hsla(root.heroHue, root.heroSat,
     root.accent.hslLightness, 0.32)
   readonly property color heroMid: Qt.hsla(root.heroHue, root.heroSat,
@@ -295,6 +315,52 @@ Panel {
     if (changed) root.writeSettings()
   }
 
+  function seedGradient() {
+    if (root.gradientSeeded) return
+    const hue = (root.accent.hslHue + root.mood.hue + 1) % 1
+    const sat = Math.min(1, Math.max(0,
+      root.accent.hslSaturation * root.mood.sat))
+    root.gradientHue = Math.round(hue * 360)
+    root.gradientSat = Math.round(sat * 100)
+    root.gradientSeeded = true
+  }
+
+  function setGradientMode(value) {
+    const custom = String(value || "").toLowerCase() === "custom"
+    var changed = false
+    if (custom && !root.gradientSeeded) {
+      root.seedGradient()
+      changed = true
+    }
+    const next = custom ? "custom" : "weather"
+    if (next !== root.gradientMode) {
+      root.gradientMode = next
+      changed = true
+    }
+    if (changed) root.writeSettings()
+  }
+
+  function setGradientHue(value) {
+    const hue = Number(value)
+    if (!isFinite(hue)) return
+    root.gradientHue = Math.max(0, Math.min(360, hue))
+    root.gradientSeeded = true
+  }
+
+  function setGradientSat(value) {
+    const sat = Number(value)
+    if (!isFinite(sat)) return
+    root.gradientSat = Math.max(0, Math.min(100, sat))
+    root.gradientSeeded = true
+  }
+
+  function setEffectsEnabled(value) {
+    const enabled = value === true
+    if (enabled === root.effectsEnabled) return
+    root.effectsEnabled = enabled
+    root.writeSettings()
+  }
+
   function applySettings(raw) {
     try {
       const data = JSON.parse(String(raw || ""))
@@ -306,6 +372,27 @@ Panel {
       }
       const unit = root.validUnit(data.unit)
       if (unit !== root.unitOverride) root.unitOverride = unit
+      const appearance = data.appearance && typeof data.appearance === "object"
+        ? data.appearance : null
+      if (!root.gradientDragging) {
+        root.gradientMode = appearance && appearance.gradient === "custom"
+          ? "custom" : "weather"
+        if (appearance) {
+          const hue = Number(appearance.hue)
+          const sat = Number(appearance.sat)
+          if (isFinite(hue)) {
+            root.gradientHue = Math.max(0, Math.min(360, hue))
+            root.gradientSeeded = true
+          }
+          if (isFinite(sat)) {
+            root.gradientSat = Math.max(0, Math.min(100, sat))
+            root.gradientSeeded = true
+          }
+          root.effectsEnabled = appearance.effects !== false
+        } else {
+          root.effectsEnabled = true
+        }
+      }
       const location = Model.parseLocation(JSON.stringify(data.location || {}))
       if (location.latitude !== null && location.longitude !== null) {
         const changed = !root.hasCustomLocation
@@ -331,6 +418,11 @@ Panel {
     root.unitOverride = ""
     root.customLocation = { name: "", latitude: null, longitude: null }
     root.locationSource = ""
+    root.gradientMode = "weather"
+    root.gradientHue = 0
+    root.gradientSat = 0
+    root.gradientSeeded = false
+    root.effectsEnabled = true
     if (hadTone && root.loaded) root.rerollComment()
     if (hadLocation && root.loaded) root.refresh(true)
   }
@@ -343,6 +435,15 @@ Panel {
     const data = {}
     if (root.toneOverride !== "") data.tone = root.toneOverride
     if (root.unitOverride !== "") data.unit = root.unitOverride
+    const appearance = {
+      gradient: root.gradientMode === "custom" ? "custom" : "weather",
+      effects: root.effectsEnabled
+    }
+    if (root.gradientSeeded) {
+      appearance.hue = Math.round(root.gradientHue)
+      appearance.sat = Math.round(root.gradientSat)
+    }
+    data.appearance = appearance
     if (root.hasCustomLocation) {
       data.location = {
         name: root.customLocation.name,
@@ -572,10 +673,22 @@ Panel {
   }
 
   function switchSettingsTab(tab) {
-    root.settingsTab = String(tab || "").toLowerCase() === "location"
-      ? "location" : "general"
+    const value = String(tab || "").toLowerCase()
+    root.settingsTab = root.settingsTabChoices.some(function(choice) {
+      return choice.value === value
+    }) ? value : "general"
     root.locationError = ""
     root.geocodeResults = []
+  }
+
+  function cycleSettingsTab(direction) {
+    const count = root.settingsTabChoices.length
+    const current = root.settingsTabChoices.findIndex(function(choice) {
+      return choice.value === root.settingsTab
+    })
+    const step = direction < 0 ? -1 : 1
+    const next = ((current < 0 ? 0 : current) + step + count) % count
+    root.switchSettingsTab(root.settingsTabChoices[next].value)
   }
 
   function retryAll() {
@@ -643,8 +756,7 @@ Panel {
       }
       onTabRequested: function(direction) {
         if (root.settingsOpen) {
-          root.switchSettingsTab(root.settingsTab === "general"
-            ? "location" : "general")
+          root.cycleSettingsTab(direction)
         } else {
           root.switchPanel(direction)
         }
@@ -665,6 +777,20 @@ Panel {
           GradientStop { position: 0.45; color: root.heroMid }
           GradientStop { position: 1.0; color: root.heroEnd }
         }
+      }
+
+      // Weather particles ride above the wash but under the hairline and the
+      // content, so text stays crisp and nothing escapes the card.
+      Effects {
+        id: weatherEffects
+
+        anchors.fill: wash
+        anchors.margins: Style.space(3)
+        kind: root.effectKind
+        active: root.effectsActive
+        tint: root.ink
+        flashColor: root.accent
+        fontFamily: root.fontFamily
       }
 
       // Hairline flush against the accent border: no gap, and its radius
@@ -781,10 +907,7 @@ Panel {
           spacing: Style.space(6)
 
           Repeater {
-            model: [
-              { value: "general", label: "GENERAL" },
-              { value: "location", label: "LOCATION" }
-            ]
+            model: root.settingsTabChoices
 
             delegate: Rectangle {
               id: tabButton
@@ -795,7 +918,9 @@ Panel {
                 === tabButton.modelData.value
               readonly property bool hovered: tabMouse.containsMouse
 
-              width: (tabBar.width - tabBar.spacing) / 2
+              width: (tabBar.width - tabBar.spacing
+                * (root.settingsTabChoices.length - 1))
+                / root.settingsTabChoices.length
               height: tabBar.height
               radius: Style.space(8)
               color: tabButton.selected ? root.activeFill
@@ -1370,6 +1495,299 @@ Panel {
                   }
                 }
               }
+            }
+          }
+
+          // --- Appearance ------------------------------------------------
+
+          Column {
+            visible: root.settingsTab === "appearance"
+            width: parent.width
+            spacing: Style.space(6)
+
+            Text {
+              textFormat: Text.PlainText
+              text: "GRADIENT"
+              color: root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              font.letterSpacing: 1.2
+              renderType: Text.NativeRendering
+            }
+
+            Rectangle {
+              width: parent.width
+              height: Style.space(44)
+              radius: Style.space(10)
+              color: "transparent"
+              border.width: 1
+              border.color: root.tileBorder
+
+              Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Style.space(9)
+                gradient: Gradient {
+                  orientation: Gradient.Vertical
+                  GradientStop { position: 0.0; color: root.heroTop }
+                  GradientStop { position: 0.45; color: root.heroMid }
+                  GradientStop { position: 1.0; color: root.heroEnd }
+                }
+              }
+            }
+
+            Row {
+              id: gradientModeRow
+
+              width: parent.width
+              spacing: Style.space(6)
+
+              Repeater {
+                model: [
+                  { value: "weather", label: "WEATHER" },
+                  { value: "custom", label: "CUSTOM" }
+                ]
+
+                delegate: Rectangle {
+                  id: gradientModePill
+
+                  required property var modelData
+
+                  readonly property bool selected: root.gradientMode
+                    === String(gradientModePill.modelData.value)
+                  readonly property bool hovered: gradientModeMouse.containsMouse
+
+                  width: (gradientModeRow.width - gradientModeRow.spacing) / 2
+                  height: Style.space(28)
+                  radius: Style.space(8)
+                  color: gradientModePill.selected ? root.activeFill
+                    : gradientModePill.hovered
+                      ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
+                  border.width: 1
+                  border.color: gradientModePill.selected
+                    ? root.accent : root.tileBorder
+
+                  Text {
+                    anchors.centerIn: parent
+                    textFormat: Text.PlainText
+                    text: gradientModePill.modelData.label
+                    color: gradientModePill.selected ? root.accent
+                      : gradientModePill.hovered ? root.ink : root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    font.letterSpacing: 1.0
+                    renderType: Text.NativeRendering
+                  }
+
+                  MouseArea {
+                    id: gradientModeMouse
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.setGradientMode(
+                      gradientModePill.modelData.value)
+                  }
+                }
+              }
+            }
+
+            Column {
+              visible: root.gradientMode === "custom"
+              width: parent.width
+              spacing: Style.space(4)
+
+              Item {
+                width: parent.width
+                height: Style.space(14)
+
+                Text {
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: "HUE"
+                  color: root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.1
+                  renderType: Text.NativeRendering
+                }
+
+                Text {
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: Math.round(root.gradientHue) + "\u00b0"
+                  color: root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  renderType: Text.NativeRendering
+                }
+              }
+
+              Rectangle {
+                id: hueStrip
+
+                width: parent.width
+                height: Style.space(14)
+                radius: height / 2
+                gradient: Gradient {
+                  orientation: Gradient.Horizontal
+                  GradientStop { position: 0.0; color: "#ff4d4d" }
+                  GradientStop { position: 1 / 6; color: "#ffd24d" }
+                  GradientStop { position: 2 / 6; color: "#6bff6b" }
+                  GradientStop { position: 3 / 6; color: "#4dd8ff" }
+                  GradientStop { position: 4 / 6; color: "#4d7dff" }
+                  GradientStop { position: 5 / 6; color: "#d24dff" }
+                  GradientStop { position: 1.0; color: "#ff4d4d" }
+                }
+
+                Rectangle {
+                  width: Style.space(16)
+                  height: width
+                  radius: width / 2
+                  y: (parent.height - height) / 2
+                  x: Math.max(0, Math.min(parent.width - width,
+                    (root.gradientHue / 360) * parent.width - width / 2))
+                  color: Qt.hsla(root.gradientHue / 360, 1, 0.55, 1)
+                  border.width: 2
+                  border.color: root.ink
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+
+                  function update(mouseX) {
+                    const fraction = Math.max(0, Math.min(1, mouseX / width))
+                    root.setGradientHue(fraction * 360)
+                  }
+
+                  onPressed: function(mouse) {
+                    root.gradientDragging = true
+                    update(mouse.x)
+                  }
+                  onPositionChanged: function(mouse) {
+                    if (pressed) update(mouse.x)
+                  }
+                  onReleased: {
+                    root.gradientDragging = false
+                    root.writeSettings()
+                  }
+                }
+              }
+
+              Item {
+                width: parent.width
+                height: Style.space(14)
+
+                Text {
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: "VIVIDNESS"
+                  color: root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.1
+                  renderType: Text.NativeRendering
+                }
+
+                Text {
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: Math.round(root.gradientSat) + "%"
+                  color: root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  renderType: Text.NativeRendering
+                }
+              }
+
+              Rectangle {
+                id: vividStrip
+
+                width: parent.width
+                height: Style.space(14)
+                radius: height / 2
+                gradient: Gradient {
+                  orientation: Gradient.Horizontal
+                  GradientStop {
+                    position: 0.0
+                    color: Qt.hsla(root.gradientHue / 360, 0, 0.6, 1)
+                  }
+                  GradientStop {
+                    position: 1.0
+                    color: Qt.hsla(root.gradientHue / 360, 1, 0.6, 1)
+                  }
+                }
+
+                Rectangle {
+                  width: Style.space(16)
+                  height: width
+                  radius: width / 2
+                  y: (parent.height - height) / 2
+                  x: Math.max(0, Math.min(parent.width - width,
+                    (root.gradientSat / 100) * parent.width - width / 2))
+                  color: Qt.hsla(root.gradientHue / 360,
+                    Math.max(0.001, root.gradientSat / 100), 0.6, 1)
+                  border.width: 2
+                  border.color: root.ink
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+
+                  function update(mouseX) {
+                    const fraction = Math.max(0, Math.min(1, mouseX / width))
+                    root.setGradientSat(fraction * 100)
+                  }
+
+                  onPressed: function(mouse) {
+                    root.gradientDragging = true
+                    update(mouse.x)
+                  }
+                  onPositionChanged: function(mouse) {
+                    if (pressed) update(mouse.x)
+                  }
+                  onReleased: {
+                    root.gradientDragging = false
+                    root.writeSettings()
+                  }
+                }
+              }
+            }
+
+            Item { width: 1; height: Style.space(2) }
+
+            Text {
+              textFormat: Text.PlainText
+              text: "EFFECTS"
+              color: root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              font.letterSpacing: 1.2
+              renderType: Text.NativeRendering
+            }
+
+            Toggle {
+              width: parent.width
+              label: "Weather effects"
+              description: "Snow, rain, storms, fog, and night stars."
+              checked: root.effectsEnabled
+              foreground: root.ink
+              accent: root.accent
+              fontFamily: root.fontFamily
+              titleSize: Style.font.bodySmall
+              descriptionSize: Style.font.caption
+              onClicked: root.setEffectsEnabled(!root.effectsEnabled)
             }
           }
 

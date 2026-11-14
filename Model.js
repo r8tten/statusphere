@@ -82,6 +82,20 @@ function iconForCode(code, night) {
   return "\ue33d"
 }
 
+// WMO code -> the particle effect the popup should show. Snow and thunder win
+// over rain; stars only appear on a clear night.
+function effectForCode(code, isDay) {
+  var value = parseInt(String(code || "0"), 10) || 0
+  if ((value >= 71 && value <= 77) || value === 85 || value === 86)
+    return "snow"
+  if (value >= 95) return "storm"
+  if ((value >= 51 && value <= 67) || (value >= 80 && value <= 82))
+    return "rain"
+  if (value === 45 || value === 48) return "fog"
+  if ((value === 0 || value === 1) && isDay === false) return "stars"
+  return ""
+}
+
 function parseDaily(daily) {
   var times = daily.time
   if (!Array.isArray(times) || times.length === 0) return []
@@ -281,6 +295,7 @@ if (typeof module !== "undefined") {
     localeUsesImperial: localeUsesImperial,
     formatTemp: formatTemp,
     moodFor: moodFor,
+    effectForCode: effectForCode,
     descriptionForCode: descriptionForCode,
     iconForCode: iconForCode
   }

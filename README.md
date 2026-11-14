@@ -11,7 +11,11 @@ forecast, and opinions about the weather.
 - Popup: location, large icon + temperature, `FEELS` line, a weather comment,
   humidity / wind / rain tiles, a 3-day forecast, and a footer with the last
   update time and refresh. The cog opens a settings page with **General**
-  (personality and units) and **Location** tabs.
+  (personality and units), **Appearance** (gradient and effects), and
+  **Location** tabs.
+- Effects: weather particles in the popup only — snow, rain, thunderstorms
+  with a lightning flash, drifting fog, and twinkling stars on a clear night.
+  The bar button stays clean.
 - Data: [Open-Meteo](https://open-meteo.com/) (no API key).
 - Location: a custom location saved by Statusphere takes precedence, then the
   shared `~/.local/state/omarchy/settings/weather.json` the rest of Omarchy
@@ -38,7 +42,7 @@ Requirements: Omarchy with Quickshell, and `curl`.
 
 Defaults are read from the widget's entry in `shell.json`, and Omarchy's
 settings panel can edit the same keys through this plugin's `schema`. The
-in-popup settings page overrides tone and units locally.
+in-popup settings page overrides tone, units, and appearance locally.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -57,12 +61,36 @@ click it, or when you pick a different tone. Tone only affects the popup
 comment; the bar tooltip stays plain.
 
 The cog in the popup opens the settings page. **General** holds the personality
-and unit choices; **Location** shows the active source and lets you auto-detect
-once, return to Omarchy's location, or search for a place by name. Closing the
-popup returns the page to General.
+and unit choices. **Appearance** controls the popup's gradient and weather
+effects. **Location** shows the active source and lets you auto-detect once,
+return to Omarchy's location, or search for a place by name. Tab and Shift+Tab
+cycle the three tabs; closing the popup returns the page to General.
 
-Picking a tone, changing units, or choosing a location writes only this
-plugin's own state file:
+### Appearance
+
+The gradient follows the theme accent by default, nudged by the current
+condition (**Weather**). Switch to **Custom** to pick your own hue and
+vividness with two sliders; the first switch seeds them from the current
+weather gradient, then your values are remembered. Custom keeps the theme's
+accent lightness, so the popup still belongs to the desktop.
+
+**Weather effects** is a single on/off switch for all particles. They only
+appear in the popup, are paused while the settings page is open, and stop when
+the popup closes:
+
+| Weather | Effect |
+| --- | --- |
+| Snow | Snowflakes of varied sizes drifting down with a gentle sway. |
+| Rain | Thin, slanted streaks falling fast. |
+| Thunderstorm | Rain plus an occasional lightning flash. |
+| Fog | Slow, translucent puffs drifting across. |
+| Clear night | Twinkling stars. |
+
+Effects are on by default. Neither the gradient nor the effects are written to
+`shell.json`; they live in the plugin's own state file.
+
+Picking a tone, changing units, choosing a location, or changing appearance
+writes only this plugin's own state file:
 
 ```
 ~/.local/state/naoko.statusphere/settings.json
@@ -74,24 +102,28 @@ It looks like:
 {
   "tone": "unhinged",
   "unit": "metric",
+  "appearance": { "gradient": "custom", "hue": 205, "sat": 82, "effects": true },
   "location": { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
   "locationSource": "manual"
 }
 ```
 
 Those values take precedence over the corresponding settings from then on.
-`locationSource` is `manual` or `auto`; omit `location` to follow Omarchy's
-shared location again. Delete the file to fall back to the configured defaults.
-Statusphere never writes to `~/.config/omarchy/shell.json` or to Omarchy's
-shared `weather.json`.
+`appearance.gradient` is `weather` or `custom`; `hue` (0–360) and `sat`
+(0–100) are kept only once a custom gradient has been seeded. `locationSource`
+is `manual` or `auto`; omit `location` to follow Omarchy's shared location
+again. Delete the file to fall back to the configured defaults. Statusphere
+never writes to `~/.config/omarchy/shell.json` or to Omarchy's shared
+`weather.json`.
 
 ## Files
 
 | File | Purpose |
 | --- | --- |
 | `manifest.json` | Plugin metadata and settings schema. |
-| `Panel.qml` | Bar button, popup, fetch/location/cache logic. |
-| `Model.js` | Open-Meteo parsing, validation, icons, units, mood hue. |
+| `Panel.qml` | Bar button, popup, fetch/location/cache logic, settings page. |
+| `Effects.qml` | Weather particles: snow, rain, storm flash, fog, night stars. |
+| `Model.js` | Open-Meteo parsing, validation, icons, units, mood hue, effect kind. |
 | `Snark.js` | Comment packs for each weather category and tone. |
 
 ## Notes
