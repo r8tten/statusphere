@@ -17,6 +17,7 @@ Item {
   readonly property int rainCount: 30
   readonly property int starCount: 20
   readonly property int fogCount: 6
+  readonly property int fireworkCount: 7
 
   visible: active && kind !== ""
   clip: true
@@ -169,6 +170,68 @@ Item {
           duration: 1800 + Math.random() * 2600
           easing.type: Easing.InOutSine
         }
+      }
+    }
+  }
+
+  // --- Fireworks (New Year's Day, Bonfire Night) --------------------------
+
+  Repeater {
+    model: root.kind === "fireworks" ? root.fireworkCount : 0
+
+    delegate: Item {
+      id: burst
+
+      readonly property var palette: [
+        root.flashColor, "#ffd166", "#ff6b6b", "#4cc9f0",
+        "#b388ff", "#7bed9f"
+      ]
+      readonly property color color: palette[
+        Math.floor(Math.random() * palette.length)]
+      readonly property real burstX: 0.12 + Math.random() * 0.76
+      readonly property real burstY: 0.10 + Math.random() * 0.36
+      readonly property real delay: Math.random() * 1800
+      readonly property real cooldown: 900 + Math.random() * 1500
+      readonly property real rise: 0.22
+      readonly property real spread: Math.max(0,
+        (life - rise) / (1 - rise))
+
+      property real life: 0
+
+      x: burstX * root.width
+      y: burstY * root.height
+
+      // The burst: sparks fly out, droop, and fade.
+      Repeater {
+        model: 20
+
+        delegate: Rectangle {
+          id: spark
+
+          readonly property real angle: (index / 20) * Math.PI * 2
+            + Math.random() * 0.3
+          readonly property real distance: 34 + Math.random() * 46
+
+          width: 1.5 + Math.random() * 1.2
+          height: 3 + Math.random() * 4
+          radius: width / 2
+          rotation: angle * 180 / Math.PI + 90
+          x: Math.cos(angle) * distance * burst.spread - width / 2
+          y: Math.sin(angle) * distance * burst.spread
+            + 16 * burst.spread * burst.spread - height / 2
+          color: burst.color
+          opacity: burst.spread <= 0 ? 0
+            : Math.min(1, (1 - burst.spread) * 1.2)
+          visible: burst.life > burst.rise
+        }
+      }
+
+      SequentialAnimation on life {
+        running: root.active
+        loops: Animation.Infinite
+        PauseAnimation { duration: burst.delay }
+        NumberAnimation { from: 0; to: 1; duration: 1800 }
+        PauseAnimation { duration: burst.cooldown }
       }
     }
   }

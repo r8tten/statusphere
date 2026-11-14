@@ -96,6 +96,14 @@ function effectForCode(code, isDay) {
   return ""
 }
 
+// A couple of dates get fireworks instead of the weather effect: New Year's
+// Day and Bonfire Night (5 November).
+function holidayEffectFor(dayKey) {
+  var key = String(dayKey || "")
+  if (key === "01-01" || key === "11-05") return "fireworks"
+  return ""
+}
+
 function parseDaily(daily) {
   var times = daily.time
   if (!Array.isArray(times) || times.length === 0) return []
@@ -296,6 +304,7 @@ if (typeof module !== "undefined") {
     formatTemp: formatTemp,
     moodFor: moodFor,
     effectForCode: effectForCode,
+    holidayEffectFor: holidayEffectFor,
     descriptionForCode: descriptionForCode,
     iconForCode: iconForCode
   }
