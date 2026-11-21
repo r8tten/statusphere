@@ -207,6 +207,39 @@ function parseLocation(raw) {
   }
 }
 
+// Saved locations are user data, so bad entries are dropped rather than
+// failing the whole list. Duplicates compare coordinates at three decimals,
+// which is close enough to count as the same place.
+function parseFavourites(raw) {
+  var data = raw
+  if (typeof raw === "string") {
+    try {
+      data = JSON.parse(raw)
+    } catch (error) {
+      return []
+    }
+  }
+  if (!Array.isArray(data)) return []
+  var seen = {}
+  var list = []
+  for (var i = 0; i < data.length && list.length < 20; i++) {
+    var entry = data[i]
+    if (!isObject(entry)) continue
+    var latitude = number(entry.latitude, -90, 90)
+    var longitude = number(entry.longitude, -180, 180)
+    if (latitude === null || longitude === null) continue
+    var key = latitude.toFixed(3) + "," + longitude.toFixed(3)
+    if (seen[key]) continue
+    seen[key] = true
+    var name = typeof entry.name === "string"
+      ? entry.name.trim().slice(0, 120) : ""
+    if (name === "")
+      name = latitude.toFixed(2) + ", " + longitude.toFixed(2)
+    list.push({ name: name, latitude: latitude, longitude: longitude })
+  }
+  return list
+}
+
 function parseGeocode(raw) {
   var data
   try {
@@ -298,6 +331,7 @@ if (typeof module !== "undefined") {
   module.exports = {
     parseWeather: parseWeather,
     parseLocation: parseLocation,
+    parseFavourites: parseFavourites,
     parseGeocode: parseGeocode,
     parseGeocodeResults: parseGeocodeResults,
     localeUsesImperial: localeUsesImperial,

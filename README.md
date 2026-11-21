@@ -21,7 +21,8 @@ forecast, and opinions about the weather.
   shared `~/.local/state/omarchy/settings/weather.json` the rest of Omarchy
   uses. If neither has coordinates, Statusphere geocodes the saved name, then
   falls back to `https://geo.omarchy.org/`. The Location tab can auto-detect
-  once or search for a place by name.
+  once, search for a place by name, and keep a short list of saved locations
+  to switch between.
 - Cache: the last good response is kept in
   `~/.cache/naoko.statusphere/report.json` and shown (marked stale) if a refresh
   fails.
@@ -84,7 +85,9 @@ Halloween) takes over for the day.
 The cog in the popup opens the settings page. **General** holds the personality
 and unit choices. **Appearance** controls the popup's gradient and weather
 effects. **Location** shows the active source and lets you auto-detect once,
-return to Omarchy's location, or search for a place by name. Tab and Shift+Tab
+return to Omarchy's location, or search for a place by name. **Save this
+location** pins the current place to a saved list you can switch between;
+removing the active saved location falls back to Omarchy's. Tab and Shift+Tab
 cycle the three tabs; closing the popup returns the page to General.
 
 ### Appearance
@@ -111,8 +114,9 @@ the popup closes:
 Effects are on by default. Neither the gradient nor the effects are written to
 `shell.json`; they live in the plugin's own state file.
 
-Picking a tone, changing units, choosing a location, or changing appearance
-writes only this plugin's own state file:
+Picking a tone, changing units, choosing a location, saving or removing a
+saved location, or changing appearance writes only this plugin's own state
+file:
 
 ```
 ~/.local/state/naoko.statusphere/settings.json
@@ -126,7 +130,11 @@ It looks like:
   "unit": "metric",
   "appearance": { "gradient": "custom", "hue": 205, "sat": 82, "effects": true },
   "location": { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
-  "locationSource": "manual"
+  "locationSource": "manual",
+  "favourites": [
+    { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
+    { "name": "Lisbon", "latitude": 38.7167, "longitude": -9.1333 }
+  ]
 }
 ```
 
@@ -134,9 +142,11 @@ Those values take precedence over the corresponding settings from then on.
 `appearance.gradient` is `weather` or `custom`; `hue` (0–360) and `sat`
 (0–100) are kept only once a custom gradient has been seeded. `locationSource`
 is `manual` or `auto`; omit `location` to follow Omarchy's shared location
-again. Delete the file to fall back to the configured defaults. Statusphere
-never writes to `~/.config/omarchy/shell.json` or to Omarchy's shared
-`weather.json`.
+again. `favourites` holds up to 20 saved places, deduplicated by coordinates,
+and survives **Use Omarchy location**; removing the active saved location also
+clears `location`, so Statusphere falls back to Omarchy's. Delete the file to
+fall back to the configured defaults. Statusphere never writes to
+`~/.config/omarchy/shell.json` or to Omarchy's shared `weather.json`.
 
 ## Files
 

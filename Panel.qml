@@ -25,6 +25,7 @@ Panel {
   property var locationState: ({ name: "", latitude: null, longitude: null })
   property var detectedLocation: ({ name: "", latitude: null, longitude: null })
   property var customLocation: ({ name: "", latitude: null, longitude: null })
+  property var favourites: []
   property string locationSource: ""
   property bool settingsOpen: false
   property string settingsTab: "general"
@@ -111,6 +112,9 @@ Panel {
   readonly property real latitude: parseFloat(String(root.effectiveLocation.latitude))
   readonly property real longitude: parseFloat(String(root.effectiveLocation.longitude))
   readonly property bool hasCoordinates: !isNaN(root.latitude) && !isNaN(root.longitude)
+  readonly property bool currentIsFavourite: root.isFavourite(root.effectiveLocation)
+  readonly property bool favouritesVisible: root.favourites.length > 0
+    && root.geocodeResults.length === 0
   readonly property string displayLocation: {
     if (root.hasCustomLocation && String(root.customLocation.name || "") !== "")
       return String(root.customLocation.name)
@@ -129,7 +133,9 @@ Panel {
   }
   readonly property string locationSourceLabel: {
     if (root.hasCustomLocation)
-      return root.locationSource === "auto" ? "Auto-detected" : "Custom location"
+      return root.isFavourite(root.customLocation)
+        ? "Saved location"
+        : root.locationSource === "auto" ? "Auto-detected" : "Custom location"
     if (root.locationState
         && root.locationState.latitude !== null
         && root.locationState.longitude !== null)
@@ -412,6 +418,7 @@ Panel {
         root.locationSource = ""
         root.refresh(true)
       }
+      root.favourites = Model.parseFavourites(data.favourites || [])
     } catch (error) {
     }
   }
@@ -423,6 +430,7 @@ Panel {
     root.unitOverride = ""
     root.customLocation = { name: "", latitude: null, longitude: null }
     root.locationSource = ""
+    root.favourites = []
     root.gradientMode = "weather"
     root.gradientHue = 0
     root.gradientSat = 0
@@ -456,6 +464,15 @@ Panel {
         longitude: root.customLocation.longitude
       }
       if (root.locationSource !== "") data.locationSource = root.locationSource
+    }
+    if (root.favourites.length > 0) {
+      data.favourites = root.favourites.map(function (entry) {
+        return {
+          name: entry.name,
+          latitude: entry.latitude,
+          longitude: entry.longitude
+        }
+      })
     }
     settingsWrite.command = ["/bin/sh", "-c",
       "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1.tmp\""
@@ -621,6 +638,73 @@ Panel {
     root.locationAttempted = false
     locationFile.reload()
     root.refresh(true)
+  }
+
+  function favouriteKey(location) {
+    if (!location || location.latitude === null || location.longitude === null)
+      return ""
+    return Number(location.latitude).toFixed(3) + ","
+      + Number(location.longitude).toFixed(3)
+  }
+
+  function isFavourite(location) {
+    const key = root.favouriteKey(location)
+    if (key === "") return false
+    return root.favourites.some(function (entry) {
+      return root.favouriteKey(entry) === key
+    })
+  }
+
+  function isActiveFavourite(entry) {
+    return root.hasCustomLocation
+      && root.favouriteKey(root.customLocation) === root.favouriteKey(entry)
+  }
+
+  function addFavourite() {
+    const location = root.effectiveLocation
+    if (!root.hasCoordinates || root.isFavourite(location)) return
+    const label = String(root.displayLocation || "").trim()
+    const list = root.favourites.slice()
+    list.push({
+      name: label === "" || label === "Your location"
+        ? Number(location.latitude).toFixed(2) + ", "
+          + Number(location.longitude).toFixed(2)
+        : label,
+      latitude: Number(location.latitude),
+      longitude: Number(location.longitude)
+    })
+    root.favourites = Model.parseFavourites(JSON.stringify(list))
+    root.writeSettings()
+  }
+
+  function removeFavourite(entry) {
+    if (!entry) return
+    const key = root.favouriteKey(entry)
+    const active = root.isActiveFavourite(entry)
+    root.favourites = root.favourites.filter(function (item) {
+      return root.favouriteKey(item) !== key
+    })
+    if (!active) {
+      root.writeSettings()
+      return
+    }
+    // Fall back to Omarchy's location in the same write as the removal. Two
+    // separate writes would let the file watcher reload the old location
+    // before the cleared one lands, resurrecting it.
+    root.customLocation = { name: "", latitude: null, longitude: null }
+    root.locationSource = ""
+    root.locationError = ""
+    root.geocodeResults = []
+    root.locationAttempted = false
+    root.writeSettings()
+    locationFile.reload()
+    root.refresh(true)
+  }
+
+  function applyFavourite(entry) {
+    if (!entry) return
+    root.setCustomLocation(entry.name, entry.latitude, entry.longitude,
+      "manual")
   }
 
   function searchLocation(query) {
@@ -1521,27 +1605,6 @@ Panel {
               renderType: Text.NativeRendering
             }
 
-            Rectangle {
-              width: parent.width
-              height: Style.space(44)
-              radius: Style.space(10)
-              color: "transparent"
-              border.width: 1
-              border.color: root.tileBorder
-
-              Rectangle {
-                anchors.fill: parent
-                anchors.margins: 1
-                radius: Style.space(9)
-                gradient: Gradient {
-                  orientation: Gradient.Vertical
-                  GradientStop { position: 0.0; color: root.heroTop }
-                  GradientStop { position: 0.45; color: root.heroMid }
-                  GradientStop { position: 1.0; color: root.heroEnd }
-                }
-              }
-            }
-
             Row {
               id: gradientModeRow
 
@@ -1950,6 +2013,199 @@ Panel {
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: root.clearCustomLocation()
+                }
+              }
+            }
+
+            Rectangle {
+              id: saveFavouriteButton
+
+              readonly property bool saved: root.currentIsFavourite
+              readonly property bool hovered: saveFavouriteMouse.containsMouse
+
+              width: parent.width
+              height: Style.space(28)
+              radius: Style.space(8)
+              color: saveFavouriteButton.hovered ? root.activeFill : root.tileFill
+              border.width: 1
+              border.color: saveFavouriteButton.hovered
+                ? root.accent : root.tileBorder
+
+              Text {
+                anchors.centerIn: parent
+                textFormat: Text.PlainText
+                text: saveFavouriteButton.saved
+                  ? "\uf00c  Saved location" : "Save this location"
+                color: saveFavouriteButton.saved
+                  ? root.faintInk
+                  : saveFavouriteButton.hovered ? root.accent : root.mutedInk
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                renderType: Text.NativeRendering
+              }
+
+              MouseArea {
+                id: saveFavouriteMouse
+
+                anchors.fill: parent
+                enabled: root.hasCoordinates && !saveFavouriteButton.saved
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.addFavourite()
+              }
+            }
+
+            Text {
+              visible: root.favouritesVisible
+              textFormat: Text.PlainText
+              text: "SAVED LOCATIONS"
+              color: root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              font.letterSpacing: 1.2
+              renderType: Text.NativeRendering
+            }
+
+            Flickable {
+              id: favouritesFlick
+
+              visible: root.favouritesVisible
+              width: parent.width
+              height: Math.min(contentHeight, Style.space(164))
+              contentHeight: favouritesColumn.implicitHeight
+              contentWidth: width
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+              interactive: contentHeight > height
+
+              Rectangle {
+                id: favouritesTrack
+
+                visible: favouritesFlick.contentHeight > favouritesFlick.height
+                z: 1
+                x: favouritesFlick.width - width - 1
+                y: favouritesFlick.contentY
+                width: 2
+                height: favouritesFlick.height
+                radius: 1
+                color: Commons.Util.alpha(root.ink, 0.10)
+
+                Rectangle {
+                  width: parent.width
+                  radius: 1
+                  color: Commons.Util.alpha(root.ink, 0.38)
+                  height: Math.max(12, favouritesTrack.height
+                    * favouritesFlick.height / favouritesFlick.contentHeight)
+                  y: (favouritesTrack.height - height)
+                    * Math.max(0, Math.min(1, favouritesFlick.contentY
+                      / Math.max(1, favouritesFlick.contentHeight
+                        - favouritesFlick.height)))
+                }
+              }
+
+              Column {
+                id: favouritesColumn
+
+                width: favouritesFlick.width
+                spacing: Style.space(4)
+
+                Repeater {
+                  model: root.favourites
+
+                  delegate: Rectangle {
+                    id: favouriteRow
+
+                    required property var modelData
+
+                    readonly property bool active: root.isActiveFavourite(
+                      favouriteRow.modelData)
+                    readonly property bool hovered: favouriteMouse.containsMouse
+
+                    width: favouritesColumn.width
+                    height: Style.space(38)
+                    radius: Style.space(8)
+                    color: favouriteRow.active
+                      ? root.activeFill
+                      : favouriteRow.hovered
+                        ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
+                    border.width: 1
+                    border.color: favouriteRow.active
+                      ? root.accent : root.tileBorder
+
+                    Column {
+                      anchors.left: parent.left
+                      anchors.right: removeFavouriteButton.left
+                      anchors.verticalCenter: parent.verticalCenter
+                      anchors.leftMargin: Style.space(10)
+                      anchors.rightMargin: Style.space(6)
+                      spacing: Style.space(1)
+
+                      Text {
+                        width: parent.width
+                        textFormat: Text.PlainText
+                        text: favouriteRow.modelData.name
+                        color: favouriteRow.active ? root.accent : root.ink
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.bodySmall
+                        font.bold: true
+                        elide: Text.ElideRight
+                        renderType: Text.NativeRendering
+                      }
+
+                      Text {
+                        width: parent.width
+                        textFormat: Text.PlainText
+                        text: Number(favouriteRow.modelData.latitude).toFixed(2)
+                          + ", "
+                          + Number(favouriteRow.modelData.longitude).toFixed(2)
+                        color: root.mutedInk
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        elide: Text.ElideRight
+                        renderType: Text.NativeRendering
+                      }
+                    }
+
+                    Item {
+                      id: removeFavouriteButton
+
+                      width: Style.space(26)
+                      height: parent.height
+                      anchors.right: parent.right
+
+                      Text {
+                        anchors.centerIn: parent
+                        textFormat: Text.PlainText
+                        text: "\uf00d"
+                        color: removeFavouriteMouse.containsMouse
+                          ? root.accent : root.mutedInk
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        renderType: Text.NativeRendering
+                      }
+
+                      MouseArea {
+                        id: removeFavouriteMouse
+
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.removeFavourite(favouriteRow.modelData)
+                      }
+                    }
+
+                    MouseArea {
+                      id: favouriteMouse
+
+                      anchors.fill: parent
+                      anchors.rightMargin: removeFavouriteButton.width
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: root.applyFavourite(favouriteRow.modelData)
+                    }
+                  }
                 }
               }
             }
