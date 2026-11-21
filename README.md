@@ -14,8 +14,9 @@ forecast, and opinions about the weather.
   (personality and units), **Appearance** (gradient and effects), and
   **Location** tabs.
 - Effects: weather particles in the popup only — snow, rain, thunderstorms
-  with a lightning flash, drifting fog, twinkling stars on a clear night, and
-  fireworks on New Year's Day and Bonfire Night. The bar button stays clean.
+  with a lightning flash, drifting fog, twinkling stars at night
+  (21:00–06:00), and fireworks on New Year's Day and Bonfire Night. The bar
+  button stays clean.
 - Data: [Open-Meteo](https://open-meteo.com/) (no API key).
 - Location: a custom location saved by Statusphere takes precedence, then the
   shared `~/.local/state/omarchy/settings/weather.json` the rest of Omarchy
@@ -108,8 +109,11 @@ the popup closes:
 | Rain | Thin, slanted streaks falling fast. |
 | Thunderstorm | Rain plus an occasional lightning flash. |
 | Fog | Slow, translucent puffs drifting across. |
-| Clear night | Twinkling stars. |
+| Night (21:00–06:00) | Twinkling stars, unless rain, snow, fog, or a thunderstorm overrides them. |
 | New Year's Day, Bonfire Night (5 Nov) | Fireworks bursting in the popup. |
+
+Stars follow your local clock rather than the API's sunrise/sunset flag, so they
+turn on at 21:00 and off at 06:00 year-round. Any weather effect takes priority.
 
 Effects are on by default. Neither the gradient nor the effects are written to
 `shell.json`; they live in the plugin's own state file.

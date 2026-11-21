@@ -86,10 +86,16 @@ Panel {
     && Array.isArray(root.weather.daily) ? root.weather.daily : []
   readonly property string dayKey: Qt.formatDate(new Date(root.nowMs), "MM-dd")
   readonly property string holidayEffect: Model.holidayEffectFor(root.dayKey)
+  // Stars follow the clock, not the API's sunrise/sunset flag, so they are on
+  // from 21:00 to 05:59 local time whatever the season.
+  readonly property bool nightHours: {
+    const hour = new Date(root.nowMs).getHours()
+    return hour >= 21 || hour < 6
+  }
   readonly property string effectKind: root.holidayEffect !== ""
     ? root.holidayEffect
     : root.currentWeather
-      ? Model.effectForCode(root.currentWeather.code, root.currentWeather.isDay)
+      ? Model.effectForCode(root.currentWeather.code, root.nightHours)
       : ""
   readonly property bool effectsActive: root.effectsEnabled && root.opened
     && root.loaded && !root.unavailable && !root.settingsOpen
