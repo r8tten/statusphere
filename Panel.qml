@@ -41,6 +41,8 @@ Panel {
   property double lastUpdated: 0
   property double nowMs: Date.now()
   property string comment: ""
+  property string shownComment: ""
+
   property string unitOverride: ""
   property int retryCount: 0
   property bool refreshPending: false
@@ -58,6 +60,7 @@ Panel {
   property bool gradientSeeded: false
   property bool gradientDragging: false
   property bool effectsEnabled: true
+  property bool commentFadeEnabled: true
 
   readonly property string cachePath: Quickshell.env("HOME")
     + "/.cache/naoko.statusphere/report.json"
@@ -378,6 +381,13 @@ Panel {
     root.writeSettings()
   }
 
+  function setCommentFadeEnabled(value) {
+    const enabled = value === true
+    if (enabled === root.commentFadeEnabled) return
+    root.commentFadeEnabled = enabled
+    root.writeSettings()
+  }
+
   function applySettings(raw) {
     try {
       const data = JSON.parse(String(raw || ""))
@@ -406,8 +416,10 @@ Panel {
             root.gradientSeeded = true
           }
           root.effectsEnabled = appearance.effects !== false
+          root.commentFadeEnabled = appearance.commentFade !== false
         } else {
           root.effectsEnabled = true
+          root.commentFadeEnabled = true
         }
       }
       const location = Model.parseLocation(JSON.stringify(data.location || {}))
@@ -442,6 +454,7 @@ Panel {
     root.gradientSat = 0
     root.gradientSeeded = false
     root.effectsEnabled = true
+    root.commentFadeEnabled = true
     if (hadTone && root.loaded) root.rerollComment()
     if (hadLocation && root.loaded) root.refresh(true)
   }
@@ -456,7 +469,8 @@ Panel {
     if (root.unitOverride !== "") data.unit = root.unitOverride
     const appearance = {
       gradient: root.gradientMode === "custom" ? "custom" : "weather",
-      effects: root.effectsEnabled
+      effects: root.effectsEnabled,
+      commentFade: root.commentFadeEnabled
     }
     if (root.gradientSeeded) {
       appearance.hue = Math.round(root.gradientHue)
@@ -1222,7 +1236,8 @@ Panel {
             wrapMode: Text.WordWrap
             lineHeight: 1.15
             textFormat: Text.PlainText
-            text: root.comment
+            text: root.shownComment
+            opacity: 0
             color: commentArea.containsMouse ? root.accent : root.ink
             font.family: root.fontFamily
             font.pixelSize: Style.font.subtitle
@@ -1230,6 +1245,81 @@ Panel {
 
             Behavior on color {
               ColorAnimation { duration: Style.duration(120) }
+            }
+          }
+
+          // Rerolls fade the old line out, swap at zero opacity, then fade the
+          // new one in. The first line skips the fade-out so it does not blink.
+          SequentialAnimation {
+            id: commentFade
+
+            NumberAnimation {
+              target: commentText
+              property: "opacity"
+              to: 0
+              duration: Style.duration(90)
+              easing.type: Easing.InQuad
+            }
+            ScriptAction { script: root.shownComment = root.comment }
+            NumberAnimation {
+              target: commentText
+              property: "opacity"
+              to: 1
+              duration: Style.duration(180)
+              easing.type: Easing.OutQuad
+            }
+          }
+
+          NumberAnimation {
+            id: commentFadeIn
+
+            target: commentText
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: Style.duration(220)
+            easing.type: Easing.OutQuad
+          }
+
+          // The animations live inside the popup's content component, so the
+          // comment change has to be watched from here rather than on root.
+          // On (re)creation, sync to whatever line already exists and fade it
+          // in, since a change may have landed before this component existed.
+          Component.onCompleted: {
+            root.shownComment = root.comment
+            if (!root.commentFadeEnabled) {
+              commentText.opacity = 1
+            } else if (root.shownComment !== "") {
+              commentFadeIn.restart()
+            }
+          }
+
+          Connections {
+            target: root
+
+            function onCommentChanged() {
+              if (root.comment === root.shownComment) return
+              if (!root.commentFadeEnabled) {
+                commentFade.stop()
+                commentFadeIn.stop()
+                root.shownComment = root.comment
+                commentText.opacity = 1
+                return
+              }
+              if (root.shownComment === "") {
+                root.shownComment = root.comment
+                commentFadeIn.restart()
+              } else {
+                commentFade.restart()
+              }
+            }
+
+            function onCommentFadeEnabledChanged() {
+              if (root.commentFadeEnabled) return
+              commentFade.stop()
+              commentFadeIn.stop()
+              root.shownComment = root.comment
+              commentText.opacity = 1
             }
           }
 
@@ -1862,6 +1952,19 @@ Panel {
               titleSize: Style.font.bodySmall
               descriptionSize: Style.font.caption
               onClicked: root.setEffectsEnabled(!root.effectsEnabled)
+            }
+
+            Toggle {
+              width: parent.width
+              label: "Comment fade"
+              description: "Fade the line out and in when it changes."
+              checked: root.commentFadeEnabled
+              foreground: root.ink
+              accent: root.accent
+              fontFamily: root.fontFamily
+              titleSize: Style.font.bodySmall
+              descriptionSize: Style.font.caption
+              onClicked: root.setCommentFadeEnabled(!root.commentFadeEnabled)
             }
           }
 

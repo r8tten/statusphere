@@ -77,11 +77,12 @@ Example entry:
 ```
 
 The comment rerolls when the panel opens, when the weather refreshes, when you
-click it, or when you pick a different tone. Tone only affects the popup
-comment; the bar tooltip stays plain. Comments come from a pack for the current
-weather, with separate friendly, rude, and profane lines. On 24–26 December,
-31 December–1 January, and 31 October, a holiday pack (Christmas, New Year,
-Halloween) takes over for the day.
+click it, or when you pick a different tone, fading the old line out and the new
+one in when **Comment fade** is on. Tone only affects the popup comment; the bar
+tooltip stays plain. Comments come from a pack for the current weather, with
+separate friendly, rude, and profane lines. On 24–26 December, 31 December–1
+January, and 31 October, a holiday pack (Christmas, New Year, Halloween) takes
+over for the day.
 
 The cog in the popup opens the settings page. **General** holds the personality
 and unit choices. **Appearance** controls the popup's gradient and weather
@@ -115,8 +116,12 @@ the popup closes:
 Stars follow your local clock rather than the API's sunrise/sunset flag, so they
 turn on at 21:00 and off at 06:00 year-round. Any weather effect takes priority.
 
-Effects are on by default. Neither the gradient nor the effects are written to
-`shell.json`; they live in the plugin's own state file.
+**Comment fade** controls whether a new comment fades in, or swaps over
+instantly. It is on by default.
+
+Effects and comment fade are on by default. Neither the gradient nor these
+preferences are written to `shell.json`; they live in the plugin's own state
+file.
 
 Picking a tone, changing units, choosing a location, saving or removing a
 saved location, or changing appearance writes only this plugin's own state
@@ -132,7 +137,10 @@ It looks like:
 {
   "tone": "unhinged",
   "unit": "metric",
-  "appearance": { "gradient": "custom", "hue": 205, "sat": 82, "effects": true },
+  "appearance": {
+    "gradient": "custom", "hue": 205, "sat": 82,
+    "effects": true, "commentFade": true
+  },
   "location": { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
   "locationSource": "manual",
   "favourites": [
@@ -144,13 +152,14 @@ It looks like:
 
 Those values take precedence over the corresponding settings from then on.
 `appearance.gradient` is `weather` or `custom`; `hue` (0–360) and `sat`
-(0–100) are kept only once a custom gradient has been seeded. `locationSource`
-is `manual` or `auto`; omit `location` to follow Omarchy's shared location
-again. `favourites` holds up to 20 saved places, deduplicated by coordinates,
-and survives **Use Omarchy location**; removing the active saved location also
-clears `location`, so Statusphere falls back to Omarchy's. Delete the file to
-fall back to the configured defaults. Statusphere never writes to
-`~/.config/omarchy/shell.json` or to Omarchy's shared `weather.json`.
+(0–100) are kept only once a custom gradient has been seeded. `effects` and
+`commentFade` are booleans and default to on. `locationSource` is `manual` or
+`auto`; omit `location` to follow Omarchy's shared location again. `favourites`
+holds up to 20 saved places, deduplicated by coordinates, and survives **Use
+Omarchy location**; removing the active saved location also clears `location`,
+so Statusphere falls back to Omarchy's. Delete the file to fall back to the
+configured defaults. Statusphere never writes to `~/.config/omarchy/shell.json`
+or to Omarchy's shared `weather.json`.
 
 ## Files
 
