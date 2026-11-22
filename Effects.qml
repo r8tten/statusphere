@@ -18,6 +18,7 @@ Item {
   readonly property int starCount: 20
   readonly property int fogCount: 6
   readonly property int fireworkCount: 7
+  readonly property int meteorCount: 12
 
   visible: active && kind !== ""
   clip: true
@@ -232,6 +233,81 @@ Item {
         PauseAnimation { duration: burst.delay }
         NumberAnimation { from: 0; to: 1; duration: 1800 }
         PauseAnimation { duration: burst.cooldown }
+      }
+    }
+  }
+
+  // --- Meteor shower (April Fools) ----------------------------------------
+
+  Repeater {
+    model: root.kind === "meteor" ? root.meteorCount : 0
+
+    delegate: Item {
+      id: meteor
+
+      readonly property real angle: 42 + Math.random() * 22
+      readonly property real angleRad: angle * Math.PI / 180
+      readonly property real startX: root.width * (0.25 + Math.random() * 1.15)
+      readonly property real startY: -40 - Math.random() * 110
+      readonly property real travel: root.height * 1.2 + root.width * 0.5
+      readonly property real trailLength: 70 + Math.random() * 80
+      readonly property real headSize: 2.4 + Math.random() * 2
+      readonly property real delay: Math.random() * 2400
+      readonly property real speed: 850 + Math.random() * 650
+      readonly property real cooldown: 1400 + Math.random() * 2800
+
+      property real progress: 0
+
+      x: startX - Math.cos(angleRad) * travel * progress
+      y: startY + Math.sin(angleRad) * travel * progress
+
+      // Tapering trail behind the head, fading away up and to the right.
+      Rectangle {
+        width: meteor.trailLength
+        height: 1.6
+        y: -height / 2
+        rotation: -meteor.angle
+        transformOrigin: Item.Left
+        opacity: 0.65
+        gradient: Gradient {
+          orientation: Gradient.Horizontal
+          GradientStop { position: 0.0; color: root.tint }
+          GradientStop { position: 1.0; color: "transparent" }
+        }
+      }
+
+      // Soft glow behind a small bright head.
+      Rectangle {
+        width: meteor.headSize * 2.6
+        height: width
+        radius: width / 2
+        x: -width / 2
+        y: -height / 2
+        color: root.tint
+        opacity: 0.18
+      }
+
+      Rectangle {
+        width: meteor.headSize
+        height: width
+        radius: width / 2
+        x: -width / 2
+        y: -height / 2
+        color: root.tint
+        opacity: 0.9
+      }
+
+      SequentialAnimation on progress {
+        running: root.active
+        loops: Animation.Infinite
+        PauseAnimation { duration: meteor.delay }
+        NumberAnimation {
+          from: 0
+          to: 1
+          duration: meteor.speed
+          easing.type: Easing.Linear
+        }
+        PauseAnimation { duration: meteor.cooldown }
       }
     }
   }

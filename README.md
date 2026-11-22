@@ -15,8 +15,8 @@ forecast, and opinions about the weather.
   **Location** tabs.
 - Effects: weather particles in the popup only — snow, rain, thunderstorms
   with a lightning flash, drifting fog, twinkling stars at night
-  (21:00–06:00), and fireworks on New Year's Day and Bonfire Night. The bar
-  button stays clean.
+  (21:00–06:00), fireworks on New Year's Day and Bonfire Night, and a meteor
+  shower on April Fools' Day. The bar button stays clean.
 - Data: [Open-Meteo](https://open-meteo.com/) (no API key).
 - Location: a custom location saved by Statusphere takes precedence, then the
   shared `~/.local/state/omarchy/settings/weather.json` the rest of Omarchy
@@ -81,8 +81,8 @@ click it, or when you pick a different tone, fading the old line out and the new
 one in when **Comment fade** is on. Tone only affects the popup comment; the bar
 tooltip stays plain. Comments come from a pack for the current weather, with
 separate friendly, rude, and profane lines. On 24–26 December, 31 December–1
-January, and 31 October, a holiday pack (Christmas, New Year, Halloween) takes
-over for the day.
+January, 31 October, and 1 April, a holiday pack (Christmas, New Year,
+Halloween, April Fools) takes over for the day.
 
 The cog in the popup opens the settings page. **General** holds the personality
 and unit choices. **Appearance** controls the popup's gradient and weather
@@ -112,9 +112,12 @@ the popup closes:
 | Fog | Slow, translucent puffs drifting across. |
 | Night (21:00–06:00) | Twinkling stars, unless rain, snow, fog, or a thunderstorm overrides them. |
 | New Year's Day, Bonfire Night (5 Nov) | Fireworks bursting in the popup. |
+| April Fools' Day (1 Apr) | A meteor shower streaks across the popup. |
 
 Stars follow your local clock rather than the API's sunrise/sunset flag, so they
-turn on at 21:00 and off at 06:00 year-round. Any weather effect takes priority.
+turn on at 21:00 and off at 06:00 year-round. Any weather effect takes priority
+over them. Fireworks and the meteor shower replace the weather effect for the
+day.
 
 **Comment fade** controls whether a new comment fades in, or swaps over
 instantly. It is on by default.

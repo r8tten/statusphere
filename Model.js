@@ -97,11 +97,12 @@ function effectForCode(code, isNight) {
   return ""
 }
 
-// A couple of dates get fireworks instead of the weather effect: New Year's
-// Day and Bonfire Night (5 November).
+// A few dates get a different effect: fireworks on New Year's Day and Bonfire
+// Night, and a meteor shower on April Fools' Day.
 function holidayEffectFor(dayKey) {
   var key = String(dayKey || "")
   if (key === "01-01" || key === "11-05") return "fireworks"
+  if (key === "04-01") return "meteor"
   return ""
 }
 

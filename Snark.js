@@ -662,6 +662,32 @@ var HOLIDAYS = {
       "Happy fucking Halloween. The pumpkins look better than the sky.",
       "Halloween. Stay in with the sweets; the weather's grim."
     ]
+  },
+  aprilfools: {
+    nice: [
+      "April Fools. The asteroid shower is mostly decorative.",
+      "Forecast: light meteors, clearing by lunch. Probably.",
+      "A few asteroids today. Umbrellas won't help, but it's fine.",
+      "Today's forecast is 100% accurate. That's the joke.",
+      "The sky is falling. Bring a jacket.",
+      "Meteor shower at four. The weather itself is behaving."
+    ],
+    rude: [
+      "April Fools. The asteroids aren't real, but your commute still is.",
+      "We checked the radar. It's not asteroids, it's just drizzle.",
+      "The forecast is a lie. The weather isn't.",
+      "Duck if you like. The meteor is imaginary.",
+      "Today's confidence: 3%. Today's weather: still real.",
+      "April Fools. You still have to go outside."
+    ],
+    profane: [
+      "Asteroid shower, my arse. It's just grey again.",
+      "April Fools. The sky's falling, but the bins still need putting out.",
+      "Happy April Fools. The weather's still shit, the meteors are fake.",
+      "Duck, you idiot. It's not a fucking meteor.",
+      "The sky is not falling. Your umbrella is still useless.",
+      "April Fools. The only thing raining is disappointment."
+    ]
   }
 }
 
@@ -671,7 +697,8 @@ var HOLIDAY_DAYS = {
   "12-26": "christmas",
   "12-31": "newyear",
   "01-01": "newyear",
-  "10-31": "halloween"
+  "10-31": "halloween",
+  "04-01": "aprilfools"
 }
 
 function categoryFor(context) {
