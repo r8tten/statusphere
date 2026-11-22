@@ -83,9 +83,9 @@ function iconForCode(code, night) {
 }
 
 // WMO code -> the particle effect the popup should show. Weather wins in the
-// order snow, thunder, rain, fog; on a night between 21:00 and 06:00 stars are
-// the fallback when none of those apply.
-function effectForCode(code, isNight) {
+// order snow, thunder, rain, fog; when the sky is dark enough stars are the
+// fallback if none of those apply.
+function effectForCode(code, isDark) {
   var value = parseInt(String(code || "0"), 10) || 0
   if ((value >= 71 && value <= 77) || value === 85 || value === 86)
     return "snow"
@@ -93,8 +93,46 @@ function effectForCode(code, isNight) {
   if ((value >= 51 && value <= 67) || (value >= 80 && value <= 82))
     return "rain"
   if (value === 45 || value === 48) return "fog"
-  if (isNight === true) return "stars"
+  if (isDark === true) return "stars"
   return ""
+}
+
+// Solar elevation in degrees for a UTC timestamp and a position. This is the
+// low-precision NOAA solar position; it only has to decide whether the sky is
+// dark enough for stars, so a fraction of a degree is plenty.
+function solarElevation(epochMs, latitude, longitude) {
+  var stamp = Number(epochMs)
+  var lat = Number(latitude)
+  var lon = Number(longitude)
+  if (!isFinite(stamp) || !isFinite(lat) || !isFinite(lon)) return null
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null
+  var rad = Math.PI / 180
+  var days = stamp / 86400000 + 2440587.5 - 2451545.0
+  var meanLongitude = (280.460 + 0.9856474 * days) % 360
+  var meanAnomaly = (357.528 + 0.9856003 * days) % 360
+  var eclipticLongitude = meanLongitude
+    + 1.915 * Math.sin(meanAnomaly * rad)
+    + 0.020 * Math.sin(2 * meanAnomaly * rad)
+  var obliquity = 23.439 - 0.0000004 * days
+  var rightAscension = Math.atan2(
+    Math.cos(obliquity * rad) * Math.sin(eclipticLongitude * rad),
+    Math.cos(eclipticLongitude * rad)) / rad
+  var declination = Math.asin(
+    Math.sin(obliquity * rad) * Math.sin(eclipticLongitude * rad)) / rad
+  var sidereal = ((18.697374558 + 24.06570982441908 * days) % 24 + 24) % 24
+  var localSidereal = sidereal * 15 + lon
+  var hourAngle = ((localSidereal - rightAscension + 540) % 360 + 360) % 360
+    - 180
+  return Math.asin(
+    Math.sin(lat * rad) * Math.sin(declination * rad)
+      + Math.cos(lat * rad) * Math.cos(declination * rad)
+        * Math.cos(hourAngle * rad)) / rad
+}
+
+// Civil twilight ends when the sun is 6 degrees below the horizon.
+function isDark(epochMs, latitude, longitude) {
+  var elevation = solarElevation(epochMs, latitude, longitude)
+  return elevation !== null && elevation < -6
 }
 
 // A few dates get a different effect: fireworks on New Year's Day and Bonfire
@@ -340,6 +378,8 @@ if (typeof module !== "undefined") {
     formatTemp: formatTemp,
     moodFor: moodFor,
     effectForCode: effectForCode,
+    solarElevation: solarElevation,
+    isDark: isDark,
     holidayEffectFor: holidayEffectFor,
     descriptionForCode: descriptionForCode,
     iconForCode: iconForCode

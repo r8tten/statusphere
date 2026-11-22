@@ -14,9 +14,9 @@ forecast, and opinions about the weather.
   (personality and units), **Appearance** (gradient and effects), and
   **Location** tabs.
 - Effects: weather particles in the popup only — snow, rain, thunderstorms
-  with a lightning flash, drifting fog, twinkling stars at night
-  (21:00–06:00), fireworks on New Year's Day and Bonfire Night, and a meteor
-  shower on April Fools' Day. The bar button stays clean.
+  with a lightning flash, drifting fog, twinkling stars after dark, fireworks
+  on New Year's Day and Bonfire Night, and a meteor shower on April Fools'
+  Day. The bar button stays clean.
 - Data: [Open-Meteo](https://open-meteo.com/) (no API key).
 - Location: a custom location saved by Statusphere takes precedence, then the
   shared `~/.local/state/omarchy/settings/weather.json` the rest of Omarchy
@@ -111,14 +111,14 @@ the popup closes:
 | Rain | Thin, slanted streaks falling fast. |
 | Thunderstorm | Rain plus an occasional lightning flash. |
 | Fog | Slow, translucent puffs drifting across. |
-| Night (21:00–06:00) | Twinkling stars, unless rain, snow, fog, or a thunderstorm overrides them. |
+| After dark (sun 6° below the horizon) | Twinkling stars, unless rain, snow, fog, or a thunderstorm overrides them. |
 | New Year's Day, Bonfire Night (5 Nov) | Fireworks bursting in the popup. |
 | April Fools' Day (1 Apr) | A meteor shower streaks across the popup. |
 
-Stars follow your local clock rather than the API's sunrise/sunset flag, so they
-turn on at 21:00 and off at 06:00 year-round. Any weather effect takes priority
-over them. Fireworks and the meteor shower replace the weather effect for the
-day.
+Stars follow the sun at the selected location rather than your clock. They
+appear once it is 6° below the horizon (the end of civil twilight) and fade out
+at dawn, whatever the season. Any weather effect takes priority over them.
+Fireworks and the meteor shower replace the weather effect for the day.
 
 **Comment fade** controls whether a new comment fades in, or swaps over
 instantly. It is on by default.
