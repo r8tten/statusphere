@@ -383,6 +383,11 @@ Panel {
     root.gradientSeeded = true
   }
 
+  function hueNear(value, target) {
+    const delta = Math.abs(Number(value) - Number(target))
+    return Math.min(delta, 360 - delta) < 6
+  }
+
   function setGradientSat(value) {
     const sat = Number(value)
     if (!isFinite(sat)) return
@@ -1056,58 +1061,66 @@ Panel {
 
         // --- Settings tabs ----------------------------------------------
 
-        Row {
+        Rectangle {
           id: tabBar
 
           visible: root.settingsOpen
           width: parent.width
-          height: Style.space(26)
-          spacing: Style.space(6)
+          height: Style.space(30)
+          radius: Style.space(10)
+          color: Commons.Util.alpha(root.ink, 0.04)
+          border.width: 1
+          border.color: root.tileBorder
 
-          Repeater {
-            model: root.settingsTabChoices
+          Row {
+            id: tabRow
 
-            delegate: Rectangle {
-              id: tabButton
+            anchors.fill: parent
+            anchors.margins: 2
+            spacing: 2
 
-              required property var modelData
+            Repeater {
+              model: root.settingsTabChoices
 
-              readonly property bool selected: root.settingsTab
-                === tabButton.modelData.value
-              readonly property bool hovered: tabMouse.containsMouse
+              delegate: Rectangle {
+                id: tabButton
 
-              width: (tabBar.width - tabBar.spacing
-                * (root.settingsTabChoices.length - 1))
-                / root.settingsTabChoices.length
-              height: tabBar.height
-              radius: Style.space(8)
-              color: tabButton.selected ? root.activeFill
-                : tabButton.hovered
-                  ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
-              border.width: 1
-              border.color: tabButton.selected
-                ? root.accent : root.tileBorder
+                required property var modelData
 
-              Text {
-                anchors.centerIn: parent
-                textFormat: Text.PlainText
-                text: tabButton.modelData.label
-                color: tabButton.selected ? root.accent
-                  : tabButton.hovered ? root.ink : root.mutedInk
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.1
-                renderType: Text.NativeRendering
-              }
+                readonly property bool selected: root.settingsTab
+                  === tabButton.modelData.value
+                readonly property bool hovered: tabMouse.containsMouse
 
-              MouseArea {
-                id: tabMouse
+                width: (tabRow.width - tabRow.spacing
+                  * (root.settingsTabChoices.length - 1))
+                  / root.settingsTabChoices.length
+                height: tabRow.height
+                radius: Style.space(8)
+                color: tabButton.selected ? root.activeFill
+                  : tabButton.hovered
+                    ? Commons.Util.alpha(root.ink, 0.06) : "transparent"
 
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.switchSettingsTab(tabButton.modelData.value)
+                Text {
+                  anchors.centerIn: parent
+                  textFormat: Text.PlainText
+                  text: tabButton.modelData.label
+                  color: tabButton.selected ? root.accent
+                    : tabButton.hovered ? root.ink : root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.0
+                  renderType: Text.NativeRendering
+                }
+
+                MouseArea {
+                  id: tabMouse
+
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.switchSettingsTab(tabButton.modelData.value)
+                }
               }
             }
           }
@@ -1678,151 +1691,159 @@ Panel {
           Column {
             visible: root.settingsTab === "general"
             width: parent.width
-            spacing: Style.space(6)
+            spacing: Style.space(8)
 
-            Text {
-              textFormat: Text.PlainText
-              text: "PERSONALITY"
-              color: root.mutedInk
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              renderType: Text.NativeRendering
-            }
+            SettingsCard {
+              title: "Personality"
+              subtitle: "How much attitude the comment gets."
+              glyph: "\uf007"
 
-            Column {
-              width: parent.width
-              spacing: Style.space(5)
+              Column {
+                width: parent.width
+                spacing: Style.space(2)
 
-              Repeater {
-                model: root.toneChoices
+                Repeater {
+                  model: root.toneChoices
 
-                delegate: Rectangle {
-                  id: toneCard
+                  delegate: Rectangle {
+                    id: toneRow
 
-                  required property var modelData
+                    required property var modelData
 
-                  readonly property bool selected: root.activeTone
-                    === String(toneCard.modelData.value)
-                  readonly property bool hovered: toneCardMouse.containsMouse
+                    readonly property bool selected: root.activeTone
+                      === String(toneRow.modelData.value)
+                    readonly property bool hovered: toneMouse.containsMouse
 
-                  width: parent.width
-                  height: Style.space(42)
-                  radius: Style.space(8)
-                  color: toneCard.selected ? root.activeFill
-                    : toneCard.hovered
-                      ? Commons.Util.alpha(root.ink, 0.07) : root.tileFill
-                  border.width: 1
-                  border.color: toneCard.selected
-                    ? root.accent : root.tileBorder
+                    width: parent.width
+                    height: Style.space(40)
+                    radius: Style.space(8)
+                    color: toneRow.selected ? root.activeFill
+                      : toneRow.hovered
+                        ? Commons.Util.alpha(root.ink, 0.06) : "transparent"
 
-                  Column {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: Style.space(10)
-                    anchors.rightMargin: Style.space(10)
-                    spacing: Style.space(1)
+                    Column {
+                      anchors.left: parent.left
+                      anchors.right: checkText.left
+                      anchors.verticalCenter: parent.verticalCenter
+                      anchors.leftMargin: Style.space(8)
+                      anchors.rightMargin: Style.space(6)
+                      spacing: Style.space(1)
 
-                    Text {
-                      width: parent.width
-                      textFormat: Text.PlainText
-                      text: toneCard.modelData.label
-                      color: toneCard.selected ? root.accent : root.ink
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.bodySmall
-                      font.bold: true
-                      elide: Text.ElideRight
-                      renderType: Text.NativeRendering
+                      Text {
+                        width: parent.width
+                        textFormat: Text.PlainText
+                        text: toneRow.modelData.label
+                        color: toneRow.selected ? root.accent : root.ink
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.bodySmall
+                        font.bold: true
+                        elide: Text.ElideRight
+                        renderType: Text.NativeRendering
+                      }
+
+                      Text {
+                        width: parent.width
+                        textFormat: Text.PlainText
+                        text: toneRow.modelData.description
+                        color: root.mutedInk
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        elide: Text.ElideRight
+                        renderType: Text.NativeRendering
+                      }
                     }
 
                     Text {
-                      width: parent.width
+                      id: checkText
+
+                      visible: toneRow.selected
+                      anchors.right: parent.right
+                      anchors.rightMargin: Style.space(8)
+                      anchors.verticalCenter: parent.verticalCenter
                       textFormat: Text.PlainText
-                      text: toneCard.modelData.description
-                      color: root.mutedInk
+                      text: "\uf00c"
+                      color: root.accent
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.caption
-                      elide: Text.ElideRight
                       renderType: Text.NativeRendering
                     }
-                  }
 
-                  MouseArea {
-                    id: toneCardMouse
+                    MouseArea {
+                      id: toneMouse
 
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.setTone(toneCard.modelData.value)
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: root.setTone(toneRow.modelData.value)
+                    }
                   }
                 }
               }
             }
 
-            Item { width: 1; height: Style.space(2) }
+            SettingsCard {
+              title: "Units"
+              subtitle: "Temperature scale in the popup."
+              glyph: "\uf2c7"
+              iconTint: "#7bed9f"
 
-            Text {
-              textFormat: Text.PlainText
-              text: "UNITS"
-              color: root.mutedInk
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              renderType: Text.NativeRendering
-            }
+              Rectangle {
+                width: parent.width
+                height: Style.space(30)
+                radius: Style.space(9)
+                color: Commons.Util.alpha(root.ink, 0.035)
+                border.width: 1
+                border.color: root.tileBorder
 
-            Row {
-              id: unitRow
+                Row {
+                  id: unitRow
 
-              width: parent.width
-              spacing: Style.space(6)
+                  anchors.fill: parent
+                  anchors.margins: 2
+                  spacing: 2
 
-              Repeater {
-                model: root.unitChoices
+                  Repeater {
+                    model: root.unitChoices
 
-                delegate: Rectangle {
-                  id: unitPill
+                    delegate: Rectangle {
+                      id: unitPill
 
-                  required property var modelData
+                      required property var modelData
 
-                  readonly property bool selected: root.unitOverride
-                    === String(unitPill.modelData.value)
-                  readonly property bool hovered: unitMouse.containsMouse
+                      readonly property bool selected: root.unitOverride
+                        === String(unitPill.modelData.value)
+                      readonly property bool hovered: unitMouse.containsMouse
 
-                  width: (unitRow.width - unitRow.spacing * 2) / 3
-                  height: Style.space(28)
-                  radius: Style.space(8)
-                  color: unitPill.selected ? root.activeFill
-                    : unitPill.hovered
-                      ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
-                  border.width: 1
-                  border.color: unitPill.selected
-                    ? root.accent : root.tileBorder
+                      width: (unitRow.width - unitRow.spacing * 2) / 3
+                      height: unitRow.height
+                      radius: Style.space(7)
+                      color: unitPill.selected ? root.activeFill
+                        : unitPill.hovered
+                          ? Commons.Util.alpha(root.ink, 0.06) : "transparent"
 
-                  Text {
-                    anchors.centerIn: parent
-                    textFormat: Text.PlainText
-                    text: unitPill.modelData.label
-                    color: unitPill.selected ? root.accent
-                      : unitPill.hovered ? root.ink : root.mutedInk
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    font.bold: true
-                    renderType: Text.NativeRendering
-                  }
+                      Text {
+                        anchors.centerIn: parent
+                        textFormat: Text.PlainText
+                        text: unitPill.modelData.label
+                        color: unitPill.selected ? root.accent
+                          : unitPill.hovered ? root.ink : root.mutedInk
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        font.bold: true
+                        renderType: Text.NativeRendering
+                      }
 
-                  MouseArea {
-                    id: unitMouse
+                      MouseArea {
+                        id: unitMouse
 
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                      root.unitOverride = String(unitPill.modelData.value)
-                      root.writeSettings()
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                          root.unitOverride = String(unitPill.modelData.value)
+                          root.writeSettings()
+                        }
+                      }
                     }
                   }
                 }
@@ -1835,375 +1856,391 @@ Panel {
           Column {
             visible: root.settingsTab === "appearance"
             width: parent.width
-            spacing: Style.space(6)
+            spacing: Style.space(8)
 
-            Text {
-              textFormat: Text.PlainText
-              text: "GRADIENT"
-              color: root.mutedInk
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              renderType: Text.NativeRendering
-            }
+            SettingsCard {
+              title: "Gradient"
+              subtitle: "The wash behind the popup."
+              glyph: "\uf043"
 
-            Row {
-              id: gradientModeRow
+              Rectangle {
+                width: parent.width
+                height: Style.space(30)
+                radius: Style.space(9)
+                color: Commons.Util.alpha(root.ink, 0.035)
+                border.width: 1
+                border.color: root.tileBorder
 
-              width: parent.width
-              spacing: Style.space(6)
+                Row {
+                  id: gradientModeRow
 
-              Repeater {
-                model: [
-                  { value: "weather", label: "WEATHER" },
-                  { value: "custom", label: "CUSTOM" }
-                ]
+                  anchors.fill: parent
+                  anchors.margins: 2
+                  spacing: 2
 
-                delegate: Rectangle {
-                  id: gradientModePill
+                  Repeater {
+                    model: [
+                      { value: "weather", label: "WEATHER" },
+                      { value: "custom", label: "CUSTOM" }
+                    ]
 
-                  required property var modelData
+                    delegate: Rectangle {
+                      id: gradientModePill
 
-                  readonly property bool selected: root.gradientMode
-                    === String(gradientModePill.modelData.value)
-                  readonly property bool hovered: gradientModeMouse.containsMouse
+                      required property var modelData
 
-                  width: (gradientModeRow.width - gradientModeRow.spacing) / 2
-                  height: Style.space(28)
-                  radius: Style.space(8)
-                  color: gradientModePill.selected ? root.activeFill
-                    : gradientModePill.hovered
-                      ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
-                  border.width: 1
-                  border.color: gradientModePill.selected
-                    ? root.accent : root.tileBorder
+                      readonly property bool selected: root.gradientMode
+                        === String(gradientModePill.modelData.value)
+                      readonly property bool hovered: gradientModeMouse.containsMouse
+
+                      width: (gradientModeRow.width - gradientModeRow.spacing) / 2
+                      height: gradientModeRow.height
+                      radius: Style.space(7)
+                      color: gradientModePill.selected ? root.activeFill
+                        : gradientModePill.hovered
+                          ? Commons.Util.alpha(root.ink, 0.06) : "transparent"
+
+                      Text {
+                        anchors.centerIn: parent
+                        textFormat: Text.PlainText
+                        text: gradientModePill.modelData.label
+                        color: gradientModePill.selected ? root.accent
+                          : gradientModePill.hovered ? root.ink : root.mutedInk
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        font.bold: true
+                        font.letterSpacing: 1.0
+                        renderType: Text.NativeRendering
+                      }
+
+                      MouseArea {
+                        id: gradientModeMouse
+
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.setGradientMode(
+                          gradientModePill.modelData.value)
+                      }
+                    }
+                  }
+                }
+              }
+
+              Column {
+                visible: root.gradientMode === "custom"
+                width: parent.width
+                spacing: Style.space(8)
+
+                Item {
+                  width: parent.width
+                  height: Style.space(14)
 
                   Text {
-                    anchors.centerIn: parent
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: gradientModePill.modelData.label
-                    color: gradientModePill.selected ? root.accent
-                      : gradientModePill.hovered ? root.ink : root.mutedInk
+                    text: "HUE"
+                    color: root.mutedInk
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.caption
                     font.bold: true
-                    font.letterSpacing: 1.0
+                    font.letterSpacing: 1.1
                     renderType: Text.NativeRendering
                   }
 
+                  ValueBadge {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Math.round(root.gradientHue) + "\u00b0"
+                  }
+                }
+
+                Rectangle {
+                  id: hueStrip
+
+                  width: parent.width
+                  height: Style.space(8)
+                  radius: height / 2
+                  gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "#ff4d4d" }
+                    GradientStop { position: 1 / 6; color: "#ffd24d" }
+                    GradientStop { position: 2 / 6; color: "#6bff6b" }
+                    GradientStop { position: 3 / 6; color: "#4dd8ff" }
+                    GradientStop { position: 4 / 6; color: "#4d7dff" }
+                    GradientStop { position: 5 / 6; color: "#d24dff" }
+                    GradientStop { position: 1.0; color: "#ff4d4d" }
+                  }
+
+                  Rectangle {
+                    width: Style.space(12)
+                    height: width
+                    radius: width / 2
+                    y: (parent.height - height) / 2
+                    x: Math.max(0, Math.min(parent.width - width,
+                      (root.gradientHue / 360) * parent.width - width / 2))
+                    color: Qt.hsla(root.gradientHue / 360, 1, 0.55, 1)
+                    border.width: 2
+                    border.color: root.ink
+                  }
+
                   MouseArea {
-                    id: gradientModeMouse
-
                     anchors.fill: parent
-                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.setGradientMode(
-                      gradientModePill.modelData.value)
+
+                    function update(mouseX) {
+                      const fraction = Math.max(0, Math.min(1, mouseX / width))
+                      root.setGradientHue(fraction * 360)
+                    }
+
+                    onPressed: function(mouse) {
+                      root.gradientDragging = true
+                      update(mouse.x)
+                    }
+                    onPositionChanged: function(mouse) {
+                      if (pressed) update(mouse.x)
+                    }
+                    onReleased: {
+                      root.gradientDragging = false
+                      root.writeSettings()
+                    }
                   }
                 }
-              }
-            }
 
-            Column {
-              visible: root.gradientMode === "custom"
-              width: parent.width
-              spacing: Style.space(4)
+                Row {
+                  width: parent.width
+                  spacing: Style.space(6)
 
-              Item {
-                width: parent.width
-                height: Style.space(14)
+                  Repeater {
+                    model: [0, 45, 120, 200, 280, 325]
 
-                Text {
-                  anchors.left: parent.left
-                  anchors.verticalCenter: parent.verticalCenter
-                  textFormat: Text.PlainText
-                  text: "HUE"
-                  color: root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.1
-                  renderType: Text.NativeRendering
-                }
+                    delegate: Rectangle {
+                      required property var modelData
 
-                Text {
-                  anchors.right: parent.right
-                  anchors.verticalCenter: parent.verticalCenter
-                  textFormat: Text.PlainText
-                  text: Math.round(root.gradientHue) + "\u00b0"
-                  color: root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  renderType: Text.NativeRendering
-                }
-              }
+                      readonly property bool selected: root.hueNear(
+                        root.gradientHue, modelData)
 
-              Rectangle {
-                id: hueStrip
+                      width: Style.space(16)
+                      height: width
+                      radius: width / 2
+                      color: Qt.hsla(modelData / 360, 0.8, 0.62, 1)
+                      border.width: selected ? 2 : 1
+                      border.color: selected ? root.ink
+                        : Commons.Util.alpha(root.ink, 0.20)
 
-                width: parent.width
-                height: Style.space(14)
-                radius: height / 2
-                gradient: Gradient {
-                  orientation: Gradient.Horizontal
-                  GradientStop { position: 0.0; color: "#ff4d4d" }
-                  GradientStop { position: 1 / 6; color: "#ffd24d" }
-                  GradientStop { position: 2 / 6; color: "#6bff6b" }
-                  GradientStop { position: 3 / 6; color: "#4dd8ff" }
-                  GradientStop { position: 4 / 6; color: "#4d7dff" }
-                  GradientStop { position: 5 / 6; color: "#d24dff" }
-                  GradientStop { position: 1.0; color: "#ff4d4d" }
-                }
-
-                Rectangle {
-                  width: Style.space(16)
-                  height: width
-                  radius: width / 2
-                  y: (parent.height - height) / 2
-                  x: Math.max(0, Math.min(parent.width - width,
-                    (root.gradientHue / 360) * parent.width - width / 2))
-                  color: Qt.hsla(root.gradientHue / 360, 1, 0.55, 1)
-                  border.width: 2
-                  border.color: root.ink
-                }
-
-                MouseArea {
-                  anchors.fill: parent
-                  cursorShape: Qt.PointingHandCursor
-
-                  function update(mouseX) {
-                    const fraction = Math.max(0, Math.min(1, mouseX / width))
-                    root.setGradientHue(fraction * 360)
-                  }
-
-                  onPressed: function(mouse) {
-                    root.gradientDragging = true
-                    update(mouse.x)
-                  }
-                  onPositionChanged: function(mouse) {
-                    if (pressed) update(mouse.x)
-                  }
-                  onReleased: {
-                    root.gradientDragging = false
-                    root.writeSettings()
+                      MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                          root.setGradientHue(modelData)
+                          root.writeSettings()
+                        }
+                      }
+                    }
                   }
                 }
-              }
 
-              Item {
-                width: parent.width
-                height: Style.space(14)
+                Item {
+                  width: parent.width
+                  height: Style.space(14)
 
-                Text {
-                  anchors.left: parent.left
-                  anchors.verticalCenter: parent.verticalCenter
-                  textFormat: Text.PlainText
-                  text: "VIVIDNESS"
-                  color: root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.1
-                  renderType: Text.NativeRendering
-                }
-
-                Text {
-                  anchors.right: parent.right
-                  anchors.verticalCenter: parent.verticalCenter
-                  textFormat: Text.PlainText
-                  text: Math.round(root.gradientSat) + "%"
-                  color: root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  renderType: Text.NativeRendering
-                }
-              }
-
-              Rectangle {
-                id: vividStrip
-
-                width: parent.width
-                height: Style.space(14)
-                radius: height / 2
-                gradient: Gradient {
-                  orientation: Gradient.Horizontal
-                  GradientStop {
-                    position: 0.0
-                    color: Qt.hsla(root.gradientHue / 360, 0, 0.6, 1)
+                  Text {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    textFormat: Text.PlainText
+                    text: "VIVIDNESS"
+                    color: root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    font.letterSpacing: 1.1
+                    renderType: Text.NativeRendering
                   }
-                  GradientStop {
-                    position: 1.0
-                    color: Qt.hsla(root.gradientHue / 360, 1, 0.6, 1)
+
+                  ValueBadge {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Math.round(root.gradientSat) + "%"
                   }
                 }
 
                 Rectangle {
-                  width: Style.space(16)
-                  height: width
-                  radius: width / 2
-                  y: (parent.height - height) / 2
-                  x: Math.max(0, Math.min(parent.width - width,
-                    (root.gradientSat / 100) * parent.width - width / 2))
-                  color: Qt.hsla(root.gradientHue / 360,
-                    Math.max(0.001, root.gradientSat / 100), 0.6, 1)
-                  border.width: 2
-                  border.color: root.ink
-                }
+                  id: vividStrip
 
-                MouseArea {
-                  anchors.fill: parent
-                  cursorShape: Qt.PointingHandCursor
-
-                  function update(mouseX) {
-                    const fraction = Math.max(0, Math.min(1, mouseX / width))
-                    root.setGradientSat(fraction * 100)
+                  width: parent.width
+                  height: Style.space(8)
+                  radius: height / 2
+                  gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop {
+                      position: 0.0
+                      color: Qt.hsla(root.gradientHue / 360, 0, 0.6, 1)
+                    }
+                    GradientStop {
+                      position: 1.0
+                      color: Qt.hsla(root.gradientHue / 360, 1, 0.6, 1)
+                    }
                   }
 
-                  onPressed: function(mouse) {
-                    root.gradientDragging = true
-                    update(mouse.x)
-                  }
-                  onPositionChanged: function(mouse) {
-                    if (pressed) update(mouse.x)
-                  }
-                  onReleased: {
-                    root.gradientDragging = false
-                    root.writeSettings()
-                  }
-                }
-              }
-
-              Item {
-                width: parent.width
-                height: Style.space(14)
-
-                Text {
-                  anchors.left: parent.left
-                  anchors.verticalCenter: parent.verticalCenter
-                  textFormat: Text.PlainText
-                  text: "BRIGHTNESS"
-                  color: root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.1
-                  renderType: Text.NativeRendering
-                }
-
-                Text {
-                  anchors.right: parent.right
-                  anchors.verticalCenter: parent.verticalCenter
-                  textFormat: Text.PlainText
-                  text: Math.round(root.heroLight * 100) + "%"
-                  color: root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  renderType: Text.NativeRendering
-                }
-              }
-
-              Rectangle {
-                id: lightStrip
-
-                width: parent.width
-                height: Style.space(14)
-                radius: height / 2
-                gradient: Gradient {
-                  orientation: Gradient.Horizontal
-                  GradientStop {
-                    position: 0.0
+                  Rectangle {
+                    width: Style.space(12)
+                    height: width
+                    radius: width / 2
+                    y: (parent.height - height) / 2
+                    x: Math.max(0, Math.min(parent.width - width,
+                      (root.gradientSat / 100) * parent.width - width / 2))
                     color: Qt.hsla(root.gradientHue / 360,
-                      Math.max(0.001, root.gradientSat / 100), 0.2, 1)
+                      Math.max(0.001, root.gradientSat / 100), 0.6, 1)
+                    border.width: 2
+                    border.color: root.ink
                   }
-                  GradientStop {
-                    position: 0.5
-                    color: Qt.hsla(root.gradientHue / 360,
-                      Math.max(0.001, root.gradientSat / 100), 0.5, 1)
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+
+                    function update(mouseX) {
+                      const fraction = Math.max(0, Math.min(1, mouseX / width))
+                      root.setGradientSat(fraction * 100)
+                    }
+
+                    onPressed: function(mouse) {
+                      root.gradientDragging = true
+                      update(mouse.x)
+                    }
+                    onPositionChanged: function(mouse) {
+                      if (pressed) update(mouse.x)
+                    }
+                    onReleased: {
+                      root.gradientDragging = false
+                      root.writeSettings()
+                    }
                   }
-                  GradientStop {
-                    position: 1.0
-                    color: Qt.hsla(root.gradientHue / 360,
-                      Math.max(0.001, root.gradientSat / 100), 0.75, 1)
+                }
+
+                Item {
+                  width: parent.width
+                  height: Style.space(14)
+
+                  Text {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    textFormat: Text.PlainText
+                    text: "BRIGHTNESS"
+                    color: root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    font.letterSpacing: 1.1
+                    renderType: Text.NativeRendering
+                  }
+
+                  ValueBadge {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Math.round(root.heroLight * 100) + "%"
                   }
                 }
 
                 Rectangle {
-                  width: Style.space(16)
-                  height: width
-                  radius: width / 2
-                  y: (parent.height - height) / 2
-                  x: Math.max(0, Math.min(parent.width - width,
-                    Math.max(0, Math.min(1, (root.heroLight * 100 - 20) / 55))
-                      * parent.width - width / 2))
-                  color: Qt.hsla(root.gradientHue / 360,
-                    Math.max(0.001, root.gradientSat / 100),
-                    root.heroLight, 1)
-                  border.width: 2
-                  border.color: root.ink
-                }
+                  id: lightStrip
 
-                MouseArea {
-                  anchors.fill: parent
-                  cursorShape: Qt.PointingHandCursor
-
-                  function update(mouseX) {
-                    const fraction = Math.max(0, Math.min(1, mouseX / width))
-                    root.setGradientLight(20 + fraction * 55)
+                  width: parent.width
+                  height: Style.space(8)
+                  radius: height / 2
+                  gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop {
+                      position: 0.0
+                      color: Qt.hsla(root.gradientHue / 360,
+                        Math.max(0.001, root.gradientSat / 100), 0.2, 1)
+                    }
+                    GradientStop {
+                      position: 0.5
+                      color: Qt.hsla(root.gradientHue / 360,
+                        Math.max(0.001, root.gradientSat / 100), 0.5, 1)
+                    }
+                    GradientStop {
+                      position: 1.0
+                      color: Qt.hsla(root.gradientHue / 360,
+                        Math.max(0.001, root.gradientSat / 100), 0.75, 1)
+                    }
                   }
 
-                  onPressed: function(mouse) {
-                    root.gradientDragging = true
-                    update(mouse.x)
+                  Rectangle {
+                    width: Style.space(12)
+                    height: width
+                    radius: width / 2
+                    y: (parent.height - height) / 2
+                    x: Math.max(0, Math.min(parent.width - width,
+                      Math.max(0, Math.min(1, (root.heroLight * 100 - 20) / 55))
+                        * parent.width - width / 2))
+                    color: Qt.hsla(root.gradientHue / 360,
+                      Math.max(0.001, root.gradientSat / 100),
+                      root.heroLight, 1)
+                    border.width: 2
+                    border.color: root.ink
                   }
-                  onPositionChanged: function(mouse) {
-                    if (pressed) update(mouse.x)
-                  }
-                  onReleased: {
-                    root.gradientDragging = false
-                    root.writeSettings()
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+
+                    function update(mouseX) {
+                      const fraction = Math.max(0, Math.min(1, mouseX / width))
+                      root.setGradientLight(20 + fraction * 55)
+                    }
+
+                    onPressed: function(mouse) {
+                      root.gradientDragging = true
+                      update(mouse.x)
+                    }
+                    onPositionChanged: function(mouse) {
+                      if (pressed) update(mouse.x)
+                    }
+                    onReleased: {
+                      root.gradientDragging = false
+                      root.writeSettings()
+                    }
                   }
                 }
               }
+
+              Text {
+                visible: root.gradientMode === "weather"
+                width: parent.width
+                wrapMode: Text.WordWrap
+                textFormat: Text.PlainText
+                text: "Follows the theme accent and the current weather."
+                color: root.mutedInk
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                renderType: Text.NativeRendering
+              }
             }
 
-            Item { width: 1; height: Style.space(2) }
+            SettingsCard {
+              title: "Effects"
+              subtitle: "Particles and motion."
+              glyph: "\uf005"
+              iconTint: "#ffcf7a"
 
-            Text {
-              textFormat: Text.PlainText
-              text: "EFFECTS"
-              color: root.mutedInk
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              renderType: Text.NativeRendering
-            }
+              SettingsSwitchRow {
+                label: "Weather effects"
+                description: "Snow, rain, storms, fog, and night stars."
+                checked: root.effectsEnabled
+                onToggled: root.setEffectsEnabled(!root.effectsEnabled)
+              }
 
-            Toggle {
-              width: parent.width
-              label: "Weather effects"
-              description: "Snow, rain, storms, fog, and night stars."
-              checked: root.effectsEnabled
-              foreground: root.ink
-              accent: root.accent
-              fontFamily: root.fontFamily
-              titleSize: Style.font.bodySmall
-              descriptionSize: Style.font.caption
-              onClicked: root.setEffectsEnabled(!root.effectsEnabled)
-            }
+              SettingsDivider { }
 
-            Toggle {
-              width: parent.width
-              label: "Comment fade"
-              description: "Fade the line out and in when it changes."
-              checked: root.commentFadeEnabled
-              foreground: root.ink
-              accent: root.accent
-              fontFamily: root.fontFamily
-              titleSize: Style.font.bodySmall
-              descriptionSize: Style.font.caption
-              onClicked: root.setCommentFadeEnabled(!root.commentFadeEnabled)
+              SettingsSwitchRow {
+                label: "Comment fade"
+                description: "Fade the line out and in when it changes."
+                checked: root.commentFadeEnabled
+                onToggled: root.setCommentFadeEnabled(!root.commentFadeEnabled)
+              }
             }
           }
 
@@ -2212,289 +2249,456 @@ Panel {
           Column {
             visible: root.settingsTab === "location"
             width: parent.width
-            spacing: Style.space(7)
+            spacing: Style.space(8)
 
-            Text {
-              textFormat: Text.PlainText
-              text: "CURRENT LOCATION"
-              color: root.mutedInk
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              renderType: Text.NativeRendering
-            }
+            SettingsCard {
+              title: "Current location"
+              subtitle: "Where the weather comes from."
+              glyph: "\uf041"
+              iconTint: "#ff8f8f"
 
-            Rectangle {
-              width: parent.width
-              height: currentColumn.implicitHeight + Style.space(18)
-              radius: Style.space(10)
-              color: root.tileFill
-              border.width: 1
-              border.color: root.tileBorder
+              Rectangle {
+                width: parent.width
+                height: currentColumn.implicitHeight + Style.space(14)
+                radius: Style.space(10)
+                color: root.tileFill
+                border.width: 1
+                border.color: root.tileBorder
 
-              Column {
-                id: currentColumn
+                Column {
+                  id: currentColumn
 
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: Style.space(10)
-                anchors.rightMargin: Style.space(10)
-                spacing: Style.space(2)
+                  anchors.left: parent.left
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  anchors.leftMargin: Style.space(8)
+                  anchors.rightMargin: Style.space(8)
+                  spacing: Style.space(2)
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: root.displayLocation
+                    color: root.ink
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.bodySmall
+                    font.bold: true
+                    elide: Text.ElideRight
+                    renderType: Text.NativeRendering
+                  }
+
+                  Text {
+                    visible: root.locationCoords !== ""
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: root.locationCoords
+                    color: root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    elide: Text.ElideRight
+                    renderType: Text.NativeRendering
+                  }
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: root.locationSourceLabel.toUpperCase()
+                    color: root.faintInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    font.letterSpacing: 1.0
+                    elide: Text.ElideRight
+                    renderType: Text.NativeRendering
+                  }
+                }
+              }
+
+              Row {
+                width: parent.width
+                spacing: Style.space(6)
+
+                Rectangle {
+                  id: detectButton
+
+                  readonly property bool hovered: detectMouse.containsMouse
+
+                  width: root.hasCustomLocation
+                    ? (parent.width - parent.spacing) / 2 : parent.width
+                  height: Style.space(28)
+                  radius: Style.space(8)
+                  color: detectButton.hovered
+                    ? root.activeFill : root.tileFill
+                  border.width: 1
+                  border.color: detectButton.hovered
+                    ? root.accent : root.tileBorder
+
+                  Text {
+                    anchors.centerIn: parent
+                    textFormat: Text.PlainText
+                    text: root.locationBusy && root.detectMode === "custom"
+                      ? "Detecting\u2026" : "Auto-detect"
+                    color: detectButton.hovered ? root.accent : root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    renderType: Text.NativeRendering
+                  }
+
+                  MouseArea {
+                    id: detectMouse
+
+                    anchors.fill: parent
+                    enabled: !root.locationBusy
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.autoDetectCustomLocation()
+                  }
+                }
+
+                Rectangle {
+                  id: omarchyButton
+
+                  visible: root.hasCustomLocation
+                  readonly property bool hovered: omarchyMouse.containsMouse
+
+                  width: (parent.width - parent.spacing) / 2
+                  height: Style.space(28)
+                  radius: Style.space(8)
+                  color: omarchyButton.hovered
+                    ? root.activeFill : root.tileFill
+                  border.width: 1
+                  border.color: omarchyButton.hovered
+                    ? root.accent : root.tileBorder
+
+                  Text {
+                    anchors.centerIn: parent
+                    width: parent.width - Style.space(12)
+                    horizontalAlignment: Text.AlignHCenter
+                    textFormat: Text.PlainText
+                    text: "Use Omarchy location"
+                    color: omarchyButton.hovered
+                      ? root.accent : root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    elide: Text.ElideRight
+                    renderType: Text.NativeRendering
+                  }
+
+                  MouseArea {
+                    id: omarchyMouse
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.clearCustomLocation()
+                  }
+                }
+              }
+
+              Rectangle {
+                id: saveFavouriteButton
+
+                readonly property bool saved: root.currentIsFavourite
+                readonly property bool hovered: saveFavouriteMouse.containsMouse
+
+                width: parent.width
+                height: Style.space(28)
+                radius: Style.space(8)
+                color: saveFavouriteButton.hovered
+                  ? root.activeFill : root.tileFill
+                border.width: 1
+                border.color: saveFavouriteButton.hovered
+                  ? root.accent : root.tileBorder
 
                 Text {
-                  width: parent.width
+                  anchors.centerIn: parent
                   textFormat: Text.PlainText
-                  text: root.displayLocation
-                  color: root.ink
+                  text: saveFavouriteButton.saved
+                    ? "\uf00c  Saved location" : "Save this location"
+                  color: saveFavouriteButton.saved
+                    ? root.faintInk
+                    : saveFavouriteButton.hovered ? root.accent : root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  renderType: Text.NativeRendering
+                }
+
+                MouseArea {
+                  id: saveFavouriteMouse
+
+                  anchors.fill: parent
+                  enabled: root.hasCoordinates && !saveFavouriteButton.saved
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.addFavourite()
+                }
+              }
+            }
+
+            SettingsCard {
+              visible: root.favouritesVisible
+              title: "Saved locations"
+              subtitle: "Tap a place to switch."
+              glyph: "\uf005"
+              iconTint: "#ffcf7a"
+
+              Flickable {
+                id: favouritesFlick
+
+                width: parent.width
+                height: Math.min(contentHeight, Style.space(116))
+                contentHeight: favouritesColumn.implicitHeight
+                contentWidth: width
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: contentHeight > height
+
+                Rectangle {
+                  id: favouritesTrack
+
+                  visible: favouritesFlick.contentHeight > favouritesFlick.height
+                  z: 1
+                  x: favouritesFlick.width - width - 1
+                  y: favouritesFlick.contentY
+                  width: 2
+                  height: favouritesFlick.height
+                  radius: 1
+                  color: Commons.Util.alpha(root.ink, 0.10)
+
+                  Rectangle {
+                    width: parent.width
+                    radius: 1
+                    color: Commons.Util.alpha(root.ink, 0.38)
+                    height: Math.max(12, favouritesTrack.height
+                      * favouritesFlick.height / favouritesFlick.contentHeight)
+                    y: (favouritesTrack.height - height)
+                      * Math.max(0, Math.min(1, favouritesFlick.contentY
+                        / Math.max(1, favouritesFlick.contentHeight
+                          - favouritesFlick.height)))
+                  }
+                }
+
+                Column {
+                  id: favouritesColumn
+
+                  width: favouritesFlick.width
+                  spacing: Style.space(4)
+
+                  Repeater {
+                    model: root.favourites
+
+                    delegate: Rectangle {
+                      id: favouriteRow
+
+                      required property var modelData
+
+                      readonly property bool active: root.isActiveFavourite(
+                        favouriteRow.modelData)
+                      readonly property bool hovered: favouriteMouse.containsMouse
+
+                      width: favouritesColumn.width
+                      height: Style.space(36)
+                      radius: Style.space(8)
+                      color: favouriteRow.active
+                        ? root.activeFill
+                        : favouriteRow.hovered
+                          ? Commons.Util.alpha(root.ink, 0.07) : "transparent"
+
+                      Column {
+                        anchors.left: parent.left
+                        anchors.right: removeFavouriteButton.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: Style.space(8)
+                        anchors.rightMargin: Style.space(6)
+                        spacing: Style.space(1)
+
+                        Text {
+                          width: parent.width
+                          textFormat: Text.PlainText
+                          text: favouriteRow.modelData.name
+                          color: favouriteRow.active ? root.accent : root.ink
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.bodySmall
+                          font.bold: true
+                          elide: Text.ElideRight
+                          renderType: Text.NativeRendering
+                        }
+
+                        Text {
+                          width: parent.width
+                          textFormat: Text.PlainText
+                          text: Number(favouriteRow.modelData.latitude).toFixed(2)
+                            + ", "
+                            + Number(favouriteRow.modelData.longitude).toFixed(2)
+                          color: root.mutedInk
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.caption
+                          elide: Text.ElideRight
+                          renderType: Text.NativeRendering
+                        }
+                      }
+
+                      Item {
+                        id: removeFavouriteButton
+
+                        width: Style.space(26)
+                        height: parent.height
+                        anchors.right: parent.right
+
+                        Text {
+                          anchors.centerIn: parent
+                          textFormat: Text.PlainText
+                          text: "\uf00d"
+                          color: removeFavouriteMouse.containsMouse
+                            ? root.accent : root.mutedInk
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.caption
+                          renderType: Text.NativeRendering
+                        }
+
+                        MouseArea {
+                          id: removeFavouriteMouse
+
+                          anchors.fill: parent
+                          hoverEnabled: true
+                          cursorShape: Qt.PointingHandCursor
+                          onClicked: root.removeFavourite(
+                            favouriteRow.modelData)
+                        }
+                      }
+
+                      MouseArea {
+                        id: favouriteMouse
+
+                        anchors.fill: parent
+                        anchors.rightMargin: removeFavouriteButton.width
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.applyFavourite(favouriteRow.modelData)
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            SettingsCard {
+              title: "Search"
+              subtitle: "Find a place by name."
+              glyph: "\uf002"
+              iconTint: "#8fd3ff"
+
+              Row {
+                width: parent.width
+                spacing: Style.space(6)
+
+                TextField {
+                  id: searchField
+
+                  width: parent.width - searchButton.width - parent.spacing
+                  height: Style.space(30)
+                  foreground: root.ink
+                  accent: root.accent
+                  placeholderText: "Search for a city\u2026"
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.bodySmall
-                  font.bold: true
-                  elide: Text.ElideRight
-                  renderType: Text.NativeRendering
+                  verticalPadding: Style.space(6)
+                  onAccepted: root.searchLocation(text)
+                  Keys.onEscapePressed: focus = false
                 }
 
-                Text {
-                  visible: root.locationCoords !== ""
-                  width: parent.width
-                  textFormat: Text.PlainText
-                  text: root.locationCoords
-                  color: root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  elide: Text.ElideRight
-                  renderType: Text.NativeRendering
-                }
+                Rectangle {
+                  id: searchButton
 
-                Text {
-                  width: parent.width
-                  textFormat: Text.PlainText
-                  text: root.locationSourceLabel.toUpperCase()
-                  color: root.faintInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.0
-                  elide: Text.ElideRight
-                  renderType: Text.NativeRendering
-                }
-              }
-            }
+                  readonly property bool hovered: searchMouse.containsMouse
 
-            Row {
-              width: parent.width
-              spacing: Style.space(6)
+                  width: Style.space(60)
+                  height: Style.space(30)
+                  radius: Style.space(8)
+                  color: searchButton.hovered
+                    ? root.activeFill : root.tileFill
+                  border.width: 1
+                  border.color: searchButton.hovered
+                    ? root.accent : root.tileBorder
 
-              Rectangle {
-                id: detectButton
+                  Text {
+                    anchors.centerIn: parent
+                    textFormat: Text.PlainText
+                    text: "SEARCH"
+                    color: searchButton.hovered ? root.accent : root.mutedInk
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    font.letterSpacing: 1.0
+                    renderType: Text.NativeRendering
+                  }
 
-                readonly property bool hovered: detectMouse.containsMouse
+                  MouseArea {
+                    id: searchMouse
 
-                width: root.hasCustomLocation
-                  ? (parent.width - parent.spacing) / 2 : parent.width
-                height: Style.space(28)
-                radius: Style.space(8)
-                color: detectButton.hovered
-                  ? root.activeFill : root.tileFill
-                border.width: 1
-                border.color: detectButton.hovered
-                  ? root.accent : root.tileBorder
-
-                Text {
-                  anchors.centerIn: parent
-                  textFormat: Text.PlainText
-                  text: root.locationBusy && root.detectMode === "custom"
-                    ? "Detecting\u2026" : "Auto-detect"
-                  color: detectButton.hovered ? root.accent : root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  renderType: Text.NativeRendering
-                }
-
-                MouseArea {
-                  id: detectMouse
-
-                  anchors.fill: parent
-                  enabled: !root.locationBusy
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: root.autoDetectCustomLocation()
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.searchLocation(searchField.text)
+                  }
                 }
               }
-
-              Rectangle {
-                id: omarchyButton
-
-                visible: root.hasCustomLocation
-                readonly property bool hovered: omarchyMouse.containsMouse
-
-                width: (parent.width - parent.spacing) / 2
-                height: Style.space(28)
-                radius: Style.space(8)
-                color: omarchyButton.hovered
-                  ? root.activeFill : root.tileFill
-                border.width: 1
-                border.color: omarchyButton.hovered
-                  ? root.accent : root.tileBorder
-
-                Text {
-                  anchors.centerIn: parent
-                  width: parent.width - Style.space(12)
-                  horizontalAlignment: Text.AlignHCenter
-                  textFormat: Text.PlainText
-                  text: "Use Omarchy location"
-                  color: omarchyButton.hovered
-                    ? root.accent : root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  elide: Text.ElideRight
-                  renderType: Text.NativeRendering
-                }
-
-                MouseArea {
-                  id: omarchyMouse
-
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: root.clearCustomLocation()
-                }
-              }
-            }
-
-            Rectangle {
-              id: saveFavouriteButton
-
-              readonly property bool saved: root.currentIsFavourite
-              readonly property bool hovered: saveFavouriteMouse.containsMouse
-
-              width: parent.width
-              height: Style.space(28)
-              radius: Style.space(8)
-              color: saveFavouriteButton.hovered ? root.activeFill : root.tileFill
-              border.width: 1
-              border.color: saveFavouriteButton.hovered
-                ? root.accent : root.tileBorder
 
               Text {
-                anchors.centerIn: parent
+                visible: root.locationError !== "" || root.locationBusy
+                width: parent.width
+                wrapMode: Text.WordWrap
                 textFormat: Text.PlainText
-                text: saveFavouriteButton.saved
-                  ? "\uf00c  Saved location" : "Save this location"
-                color: saveFavouriteButton.saved
-                  ? root.faintInk
-                  : saveFavouriteButton.hovered ? root.accent : root.mutedInk
+                text: root.locationBusy
+                  ? (root.detectMode === "custom"
+                    ? "Detecting\u2026" : "Searching\u2026")
+                  : root.locationError
+                color: root.locationBusy ? root.mutedInk : root.accent
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
-                font.bold: true
                 renderType: Text.NativeRendering
               }
 
-              MouseArea {
-                id: saveFavouriteMouse
-
-                anchors.fill: parent
-                enabled: root.hasCoordinates && !saveFavouriteButton.saved
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.addFavourite()
-              }
-            }
-
-            Text {
-              visible: root.favouritesVisible
-              textFormat: Text.PlainText
-              text: "SAVED LOCATIONS"
-              color: root.mutedInk
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              renderType: Text.NativeRendering
-            }
-
-            Flickable {
-              id: favouritesFlick
-
-              visible: root.favouritesVisible
-              width: parent.width
-              height: Math.min(contentHeight, Style.space(164))
-              contentHeight: favouritesColumn.implicitHeight
-              contentWidth: width
-              clip: true
-              boundsBehavior: Flickable.StopAtBounds
-              interactive: contentHeight > height
-
-              Rectangle {
-                id: favouritesTrack
-
-                visible: favouritesFlick.contentHeight > favouritesFlick.height
-                z: 1
-                x: favouritesFlick.width - width - 1
-                y: favouritesFlick.contentY
-                width: 2
-                height: favouritesFlick.height
-                radius: 1
-                color: Commons.Util.alpha(root.ink, 0.10)
-
-                Rectangle {
-                  width: parent.width
-                  radius: 1
-                  color: Commons.Util.alpha(root.ink, 0.38)
-                  height: Math.max(12, favouritesTrack.height
-                    * favouritesFlick.height / favouritesFlick.contentHeight)
-                  y: (favouritesTrack.height - height)
-                    * Math.max(0, Math.min(1, favouritesFlick.contentY
-                      / Math.max(1, favouritesFlick.contentHeight
-                        - favouritesFlick.height)))
-                }
-              }
-
               Column {
-                id: favouritesColumn
-
-                width: favouritesFlick.width
+                visible: root.geocodeResults.length > 0
+                width: parent.width
                 spacing: Style.space(4)
 
                 Repeater {
-                  model: root.favourites
+                  model: root.geocodeResults
 
                   delegate: Rectangle {
-                    id: favouriteRow
+                    id: resultRow
 
                     required property var modelData
 
-                    readonly property bool active: root.isActiveFavourite(
-                      favouriteRow.modelData)
-                    readonly property bool hovered: favouriteMouse.containsMouse
+                    readonly property bool hovered: resultMouse.containsMouse
 
-                    width: favouritesColumn.width
-                    height: Style.space(38)
+                    width: parent.width
+                    height: Style.space(36)
                     radius: Style.space(8)
-                    color: favouriteRow.active
-                      ? root.activeFill
-                      : favouriteRow.hovered
-                        ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
+                    color: resultRow.hovered
+                      ? Commons.Util.alpha(root.ink, 0.07) : root.tileFill
                     border.width: 1
-                    border.color: favouriteRow.active
+                    border.color: resultRow.hovered
                       ? root.accent : root.tileBorder
 
                     Column {
                       anchors.left: parent.left
-                      anchors.right: removeFavouriteButton.left
+                      anchors.right: parent.right
                       anchors.verticalCenter: parent.verticalCenter
                       anchors.leftMargin: Style.space(10)
-                      anchors.rightMargin: Style.space(6)
+                      anchors.rightMargin: Style.space(10)
                       spacing: Style.space(1)
 
                       Text {
                         width: parent.width
                         textFormat: Text.PlainText
-                        text: favouriteRow.modelData.name
-                        color: favouriteRow.active ? root.accent : root.ink
+                        text: resultRow.modelData.name
+                        color: resultRow.hovered ? root.accent : root.ink
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.bodySmall
                         font.bold: true
@@ -2503,11 +2707,10 @@ Panel {
                       }
 
                       Text {
+                        visible: String(resultRow.modelData.detail || "") !== ""
                         width: parent.width
                         textFormat: Text.PlainText
-                        text: Number(favouriteRow.modelData.latitude).toFixed(2)
-                          + ", "
-                          + Number(favouriteRow.modelData.longitude).toFixed(2)
+                        text: String(resultRow.modelData.detail || "")
                         color: root.mutedInk
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.caption
@@ -2516,196 +2719,14 @@ Panel {
                       }
                     }
 
-                    Item {
-                      id: removeFavouriteButton
-
-                      width: Style.space(26)
-                      height: parent.height
-                      anchors.right: parent.right
-
-                      Text {
-                        anchors.centerIn: parent
-                        textFormat: Text.PlainText
-                        text: "\uf00d"
-                        color: removeFavouriteMouse.containsMouse
-                          ? root.accent : root.mutedInk
-                        font.family: root.fontFamily
-                        font.pixelSize: Style.font.caption
-                        renderType: Text.NativeRendering
-                      }
-
-                      MouseArea {
-                        id: removeFavouriteMouse
-
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.removeFavourite(favouriteRow.modelData)
-                      }
-                    }
-
                     MouseArea {
-                      id: favouriteMouse
+                      id: resultMouse
 
                       anchors.fill: parent
-                      anchors.rightMargin: removeFavouriteButton.width
                       hoverEnabled: true
                       cursorShape: Qt.PointingHandCursor
-                      onClicked: root.applyFavourite(favouriteRow.modelData)
+                      onClicked: root.chooseGeocodeResult(resultRow.modelData)
                     }
-                  }
-                }
-              }
-            }
-
-            Item { width: 1; height: Style.space(2) }
-
-            Text {
-              textFormat: Text.PlainText
-              text: "SEARCH"
-              color: root.mutedInk
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              renderType: Text.NativeRendering
-            }
-
-            Row {
-              width: parent.width
-              spacing: Style.space(6)
-
-              TextField {
-                id: searchField
-
-                width: parent.width - searchButton.width - parent.spacing
-                height: Style.space(30)
-                foreground: root.ink
-                accent: root.accent
-                placeholderText: "Search for a city\u2026"
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.bodySmall
-                verticalPadding: Style.space(6)
-                onAccepted: root.searchLocation(text)
-                Keys.onEscapePressed: focus = false
-              }
-
-              Rectangle {
-                id: searchButton
-
-                readonly property bool hovered: searchMouse.containsMouse
-
-                width: Style.space(60)
-                height: Style.space(30)
-                radius: Style.space(8)
-                color: searchButton.hovered
-                  ? root.activeFill : root.tileFill
-                border.width: 1
-                border.color: searchButton.hovered
-                  ? root.accent : root.tileBorder
-
-                Text {
-                  anchors.centerIn: parent
-                  textFormat: Text.PlainText
-                  text: "SEARCH"
-                  color: searchButton.hovered ? root.accent : root.mutedInk
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.0
-                  renderType: Text.NativeRendering
-                }
-
-                MouseArea {
-                  id: searchMouse
-
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: root.searchLocation(searchField.text)
-                }
-              }
-            }
-
-            Text {
-              visible: root.locationError !== "" || root.locationBusy
-              width: parent.width
-              wrapMode: Text.WordWrap
-              textFormat: Text.PlainText
-              text: root.locationBusy
-                ? (root.detectMode === "custom"
-                  ? "Detecting\u2026" : "Searching\u2026")
-                : root.locationError
-              color: root.locationBusy ? root.mutedInk : root.accent
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              renderType: Text.NativeRendering
-            }
-
-            Column {
-              visible: root.geocodeResults.length > 0
-              width: parent.width
-              spacing: Style.space(4)
-
-              Repeater {
-                model: root.geocodeResults
-
-                delegate: Rectangle {
-                  id: resultRow
-
-                  required property var modelData
-
-                  readonly property bool hovered: resultMouse.containsMouse
-
-                  width: parent.width
-                  height: Style.space(36)
-                  radius: Style.space(8)
-                  color: resultRow.hovered
-                    ? Commons.Util.alpha(root.ink, 0.09) : root.tileFill
-                  border.width: 1
-                  border.color: resultRow.hovered
-                    ? root.accent : root.tileBorder
-
-                  Column {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: Style.space(10)
-                    anchors.rightMargin: Style.space(10)
-                    spacing: Style.space(1)
-
-                    Text {
-                      width: parent.width
-                      textFormat: Text.PlainText
-                      text: resultRow.modelData.name
-                      color: resultRow.hovered ? root.accent : root.ink
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.bodySmall
-                      font.bold: true
-                      elide: Text.ElideRight
-                      renderType: Text.NativeRendering
-                    }
-
-                    Text {
-                      visible: String(resultRow.modelData.detail || "") !== ""
-                      width: parent.width
-                      textFormat: Text.PlainText
-                      text: String(resultRow.modelData.detail || "")
-                      color: root.mutedInk
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
-                      elide: Text.ElideRight
-                      renderType: Text.NativeRendering
-                    }
-                  }
-
-                  MouseArea {
-                    id: resultMouse
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.chooseGeocodeResult(resultRow.modelData)
                   }
                 }
               }
@@ -2713,6 +2734,201 @@ Panel {
           }
         }
       }
+    }
+  }
+
+  // --- Settings components -----------------------------------------------
+
+  component SettingsIcon: Rectangle {
+    id: icon
+
+    property string glyph: ""
+    property color tint: root.accent
+
+    width: Style.space(26)
+    height: width
+    radius: Style.space(8)
+    color: Commons.Util.alpha(tint, 0.14)
+    border.width: 1
+    border.color: Commons.Util.alpha(tint, 0.24)
+
+    Text {
+      anchors.centerIn: parent
+      textFormat: Text.PlainText
+      text: icon.glyph
+      color: icon.tint
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      renderType: Text.NativeRendering
+    }
+  }
+
+  component SettingsCard: Rectangle {
+    id: card
+
+    property string title: ""
+    property string subtitle: ""
+    property string glyph: ""
+    property color iconTint: root.accent
+    default property alias content: body.data
+
+    width: parent ? parent.width : implicitWidth
+    implicitHeight: cardLayout.implicitHeight + Style.space(20)
+    radius: Style.space(16)
+    color: Commons.Util.alpha(root.ink, 0.045)
+    border.width: 1
+    border.color: Commons.Util.alpha(root.ink, 0.08)
+
+    Column {
+      id: cardLayout
+
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      anchors.margins: Style.space(10)
+      spacing: Style.space(8)
+
+      Row {
+        width: parent.width
+        spacing: Style.space(8)
+
+        SettingsIcon { glyph: card.glyph; tint: card.iconTint }
+
+        Column {
+          width: parent.width - Style.space(34)
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: Style.space(1)
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: card.title
+            color: root.ink
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            font.bold: true
+            elide: Text.ElideRight
+            renderType: Text.NativeRendering
+          }
+
+          Text {
+            visible: card.subtitle !== ""
+            width: parent.width
+            textFormat: Text.PlainText
+            text: card.subtitle
+            color: root.mutedInk
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            elide: Text.ElideRight
+            renderType: Text.NativeRendering
+          }
+        }
+      }
+
+      Column {
+        id: body
+
+        width: parent.width
+        spacing: Style.space(8)
+      }
+    }
+  }
+
+  component SettingsSwitchRow: Item {
+    id: row
+
+    property string label: ""
+    property string description: ""
+    property bool checked: false
+
+    signal toggled()
+
+    width: parent ? parent.width : implicitWidth
+    implicitHeight: Math.max(textBlock.implicitHeight, toggle.implicitHeight)
+      + Style.space(8)
+
+    Column {
+      id: textBlock
+
+      anchors.left: parent.left
+      anchors.right: toggle.left
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.rightMargin: Style.space(8)
+      spacing: Style.space(1)
+
+      Text {
+        width: parent.width
+        textFormat: Text.PlainText
+        text: row.label
+        color: root.ink
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        font.bold: true
+        elide: Text.ElideRight
+        renderType: Text.NativeRendering
+      }
+
+      Text {
+        visible: row.description !== ""
+        width: parent.width
+        textFormat: Text.PlainText
+        text: row.description
+        color: root.mutedInk
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        wrapMode: Text.WordWrap
+        renderType: Text.NativeRendering
+      }
+    }
+
+    ToggleSwitch {
+      id: toggle
+
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      checked: row.checked
+      interactive: false
+      foreground: root.ink
+      accent: root.accent
+    }
+
+    MouseArea {
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: row.toggled()
+    }
+  }
+
+  component SettingsDivider: Rectangle {
+    width: parent ? parent.width : implicitWidth
+    height: 1
+    color: Commons.Util.alpha(root.ink, 0.07)
+  }
+
+  component ValueBadge: Rectangle {
+    id: badge
+
+    property string text: ""
+
+    width: valueText.implicitWidth + Style.space(12)
+    height: Style.space(18)
+    radius: Style.space(6)
+    color: Commons.Util.alpha(root.accent, 0.10)
+    border.width: 1
+    border.color: Commons.Util.alpha(root.accent, 0.16)
+
+    Text {
+      id: valueText
+
+      anchors.centerIn: parent
+      textFormat: Text.PlainText
+      text: badge.text
+      color: root.accent
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      font.bold: true
+      renderType: Text.NativeRendering
     }
   }
 

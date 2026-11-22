@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "naoko.statusphere",
   "name": "Statusphere",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "author": "Naoko",
   "license": "MIT",
   "description": "Snarky weather widget with a 3-day forecast.",
