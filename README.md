@@ -98,7 +98,8 @@ The gradient follows the theme accent by default, nudged by the current
 condition (**Weather**). Switch to **Custom** to pick your own hue and
 vividness with two sliders; the first switch seeds them from the current
 weather gradient, then your values are remembered. Custom keeps the theme's
-accent lightness, so the popup still belongs to the desktop.
+accent lightness, so the popup still belongs to the desktop, and the vividness
+slider also deepens the wash so higher values carry more colour down the card.
 
 **Weather effects** is a single on/off switch for all particles. They only
 appear in the popup, are paused while the settings page is open, and stop when

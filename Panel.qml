@@ -202,10 +202,14 @@ Panel {
   readonly property real heroSat: root.gradientMode === "custom"
     ? Math.min(1, Math.max(0, root.gradientSat / 100))
     : Math.min(1, Math.max(0, root.accent.hslSaturation * root.mood.sat))
+  // Custom vividness also deepens the wash, not just the saturation, so 100%
+  // reads as a rich colour instead of a faint tint over the card.
+  readonly property real customVivid: root.gradientMode === "custom"
+    ? root.heroSat : 0
   readonly property color heroTop: Qt.hsla(root.heroHue, root.heroSat,
-    root.accent.hslLightness, 0.32)
+    root.accent.hslLightness, 0.32 + 0.30 * root.customVivid)
   readonly property color heroMid: Qt.hsla(root.heroHue, root.heroSat,
-    root.accent.hslLightness, 0.13)
+    root.accent.hslLightness, 0.13 + 0.17 * root.customVivid)
   readonly property color heroEnd: Qt.hsla(root.heroHue, root.heroSat,
     root.accent.hslLightness, 0.0)
   readonly property color tempGlow: Qt.hsla(root.heroHue, root.heroSat,
