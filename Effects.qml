@@ -37,24 +37,45 @@ Item {
       readonly property real sway: 4 + Math.random() * 10
       readonly property real speed: 4200 + Math.random() * 5200
       readonly property real delay: Math.random() * 3200
+      readonly property real baseOpacity: 0.35 + Math.random() * 0.55
+
+      property real travel: root.height
 
       text: "\uf2dc"
       color: root.tint
-      opacity: 0.35 + Math.random() * 0.55
+      opacity: 0
       font.family: root.fontFamily
       font.pixelSize: size
       renderType: Text.NativeRendering
       x: baseX
       y: -size
 
+      // Freeze the fall distance for this pass so a comment wrapping to a new
+      // line does not retarget flakes that are already near the bottom.
       SequentialAnimation on y {
         running: root.active
         loops: Animation.Infinite
         PauseAnimation { duration: flake.delay }
+        ScriptAction { script: flake.travel = root.height }
         NumberAnimation {
           from: -flake.size
-          to: root.height + flake.size
+          to: flake.travel + flake.size
           duration: flake.speed
+        }
+      }
+
+      // Fade out over the last part of the fall so flakes disappear before
+      // the card's bottom edge clips them.
+      SequentialAnimation on opacity {
+        running: root.active
+        loops: Animation.Infinite
+        PauseAnimation { duration: flake.delay }
+        ScriptAction { script: flake.opacity = flake.baseOpacity }
+        PauseAnimation { duration: flake.speed * 0.85 }
+        NumberAnimation {
+          from: flake.baseOpacity
+          to: 0
+          duration: flake.speed * 0.15
         }
       }
 
@@ -87,23 +108,45 @@ Item {
 
       readonly property real dropHeight: 5 + Math.random() * 8
       readonly property real speed: 650 + Math.random() * 650
+      readonly property real delay: Math.random() * 1200
+      readonly property real baseOpacity: 0.18 + Math.random() * 0.28
+
+      property real travel: root.height
 
       width: 1
       height: dropHeight
       x: Math.random() * Math.max(1, root.width)
       y: -dropHeight
       color: root.tint
-      opacity: 0.18 + Math.random() * 0.28
+      opacity: 0
       rotation: 9 + Math.random() * 5
 
+      // Freeze the fall distance for this pass so a comment wrapping to a new
+      // line does not retarget drops that are already near the bottom.
       SequentialAnimation on y {
         running: root.active
         loops: Animation.Infinite
-        PauseAnimation { duration: Math.random() * 1200 }
+        PauseAnimation { duration: drop.delay }
+        ScriptAction { script: drop.travel = root.height }
         NumberAnimation {
           from: -drop.dropHeight
-          to: root.height + drop.dropHeight
+          to: drop.travel + drop.dropHeight
           duration: drop.speed
+        }
+      }
+
+      // Fade out over the last part of the fall so drops disappear before the
+      // card's bottom edge clips them.
+      SequentialAnimation on opacity {
+        running: root.active
+        loops: Animation.Infinite
+        PauseAnimation { duration: drop.delay }
+        ScriptAction { script: drop.opacity = drop.baseOpacity }
+        PauseAnimation { duration: drop.speed * 0.85 }
+        NumberAnimation {
+          from: drop.baseOpacity
+          to: 0
+          duration: drop.speed * 0.15
         }
       }
     }
