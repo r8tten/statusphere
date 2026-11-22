@@ -99,9 +99,14 @@ Panel {
     : root.currentWeather
       ? Model.effectForCode(root.currentWeather.code, root.darkNow)
       : ""
+  readonly property var eclipse: Model.eclipseState(root.nowMs,
+    root.latitude, root.longitude)
+  readonly property bool eclipseActive: root.effectsEnabled && root.opened
+    && root.loaded && !root.unavailable && !root.settingsOpen
+    && root.eclipse !== null
   readonly property bool effectsActive: root.effectsEnabled && root.opened
     && root.loaded && !root.unavailable && !root.settingsOpen
-    && root.effectKind !== ""
+    && root.effectKind !== "" && !root.eclipseActive
   readonly property bool hasCustomLocation: root.customLocation
     && root.customLocation.latitude !== null
     && root.customLocation.longitude !== null
@@ -916,6 +921,22 @@ Panel {
         }
       }
 
+      // A solar eclipse dims the whole card behind the content.
+      Rectangle {
+        anchors.fill: wash
+        radius: wash.radius
+        color: "#000000"
+        opacity: root.eclipseActive ? root.eclipse.darkness : 0
+        visible: opacity > 0.001
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Style.duration(700)
+            easing.type: Easing.InOutQuad
+          }
+        }
+      }
+
       // Weather particles ride above the wash but under the hairline and the
       // content, so text stays crisp and nothing escapes the card.
       Effects {
@@ -1181,7 +1202,105 @@ Panel {
           visible: root.loaded && !root.settingsOpen
           width: parent.width
           implicitHeight: Math.max(heroRow.implicitHeight + Style.space(30),
-            Style.space(150))
+            Style.space(150), root.eclipseActive ? Style.space(204) : 0)
+
+          Behavior on implicitHeight {
+            NumberAnimation {
+              duration: Style.duration(450)
+              easing.type: Easing.InOutQuad
+            }
+          }
+
+          // Solar eclipse corona around the icon and temperature.
+          Item {
+            id: eclipseCorona
+
+            anchors.centerIn: parent
+            width: Math.min(hero.width - Style.space(30),
+              Style.space(190))
+            height: width
+            visible: opacity > 0.001
+            opacity: root.eclipseActive ? root.eclipse.corona : 0
+
+            readonly property color glowColor: root.eclipse
+              && root.eclipse.type === "annular" ? "#ffcf7a" : root.ink
+
+            Behavior on opacity {
+              NumberAnimation {
+                duration: Style.duration(700)
+                easing.type: Easing.InOutQuad
+              }
+            }
+
+            // Soft outer glow.
+            Rectangle {
+              anchors.centerIn: parent
+              width: parent.width
+              height: width
+              radius: width / 2
+              color: "transparent"
+              border.width: Style.space(10)
+              border.color: eclipseCorona.glowColor
+              opacity: 0.08
+            }
+
+            // Main ring.
+            Rectangle {
+              anchors.centerIn: parent
+              width: parent.width
+              height: width
+              radius: width / 2
+              color: "transparent"
+              border.width: 2
+              border.color: eclipseCorona.glowColor
+              opacity: 0.85
+            }
+
+            // Inner ring.
+            Rectangle {
+              anchors.centerIn: parent
+              width: parent.width * 0.82
+              height: width
+              radius: width / 2
+              color: "transparent"
+              border.width: 1
+              border.color: eclipseCorona.glowColor
+              opacity: 0.30
+            }
+
+            // Slow corona rays.
+            Item {
+              anchors.fill: parent
+
+              Repeater {
+                model: 18
+
+                Item {
+                  width: parent.width
+                  height: parent.height
+                  rotation: index * 20
+
+                  Rectangle {
+                    width: 1.5
+                    height: 10 + (index % 3) * 5
+                    x: (parent.width - width) / 2
+                    y: 2
+                    radius: width / 2
+                    color: eclipseCorona.glowColor
+                    opacity: 0.22
+                  }
+                }
+              }
+
+              NumberAnimation on rotation {
+                from: 0
+                to: 360
+                duration: 90000
+                loops: Animation.Infinite
+                running: root.eclipseActive
+              }
+            }
+          }
 
           Row {
             id: heroRow

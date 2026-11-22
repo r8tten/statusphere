@@ -120,6 +120,13 @@ appear once it is 6° below the horizon (the end of civil twilight) and fade out
 at dawn, whatever the season. Any weather effect takes priority over them.
 Fireworks and the meteor shower replace the weather effect for the day.
 
+**Solar eclipses** come from a small curated table of upcoming events (2027–2030
+for now). When the selected location falls inside an event's approximate
+visibility region, the popup dims and a corona appears around the icon and
+temperature: total eclipses go darkest, annular eclipses get a warm ring, and
+partial eclipses dim with only a faint glow. The regions and times are
+approximate, and the effect respects **Weather effects**.
+
 **Comment fade** controls whether a new comment fades in, or swaps over
 instantly. It is on by default.
 

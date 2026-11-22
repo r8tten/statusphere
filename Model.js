@@ -135,6 +135,131 @@ function isDark(epochMs, latitude, longitude) {
   return elevation !== null && elevation < -6
 }
 
+// Curated solar eclipses. Each region carries its own representative peak time
+// because the global peak is not local midday everywhere; the boxes and times
+// are approximate, which is enough for a visual. Total and annular paths are
+// narrow, partial visibility is broad.
+var ECLIPSES = [
+  {
+    name: "Annular solar eclipse",
+    date: "2027-02-06",
+    regions: [
+      { type: "annular", south: -40, north: -20, west: -75, east: -50,
+        peak: "2027-02-06T16:00:00Z", window: 20 },
+      { type: "annular", south: 0, north: 12, west: -12, east: 12,
+        peak: "2027-02-06T16:00:00Z", window: 25 },
+      { type: "partial", south: -55, north: 20, west: -90, east: 30,
+        peak: "2027-02-06T16:00:00Z", window: 50 }
+    ]
+  },
+  {
+    name: "Total solar eclipse",
+    date: "2027-08-02",
+    regions: [
+      { type: "total", south: 35.5, north: 38.2, west: -7.5, east: -2.5,
+        peak: "2027-08-02T08:50:00Z", window: 15 },
+      { type: "total", south: 28, north: 38, west: -12, east: 12,
+        peak: "2027-08-02T09:00:00Z", window: 25 },
+      { type: "total", south: 12, north: 34, west: 12, east: 56,
+        peak: "2027-08-02T10:00:00Z", window: 25 },
+      { type: "partial", south: 34, north: 72, west: -25, east: 45,
+        peak: "2027-08-02T09:00:00Z", window: 55 }
+    ]
+  },
+  {
+    name: "Annular solar eclipse",
+    date: "2028-01-26",
+    regions: [
+      { type: "annular", south: -20, north: 5, west: -82, east: -35,
+        peak: "2028-01-26T15:08:00Z", window: 20 },
+      { type: "annular", south: 35, north: 41, west: -10, east: 0,
+        peak: "2028-01-26T15:30:00Z", window: 20 },
+      { type: "partial", south: 25, north: 60, west: -25, east: 15,
+        peak: "2028-01-26T15:20:00Z", window: 50 }
+    ]
+  },
+  {
+    name: "Total solar eclipse",
+    date: "2028-07-22",
+    regions: [
+      { type: "total", south: -36, north: -14, west: 112, east: 154,
+        peak: "2028-07-22T02:55:00Z", window: 20 },
+      { type: "total", south: -48, north: -33, west: 165, east: 180,
+        peak: "2028-07-22T03:10:00Z", window: 15 },
+      { type: "partial", south: -50, north: 5, west: 90, east: 180,
+        peak: "2028-07-22T02:55:00Z", window: 55 }
+    ]
+  },
+  {
+    name: "Annular solar eclipse",
+    date: "2030-06-01",
+    regions: [
+      { type: "annular", south: 30, north: 46, west: -5, east: 42,
+        peak: "2030-06-01T06:28:00Z", window: 20 },
+      { type: "annular", south: 45, north: 60, west: 40, east: 145,
+        peak: "2030-06-01T06:45:00Z", window: 25 },
+      { type: "partial", south: 25, north: 75, west: -25, east: 160,
+        peak: "2030-06-01T06:30:00Z", window: 55 }
+    ]
+  },
+  {
+    name: "Total solar eclipse",
+    date: "2030-11-25",
+    regions: [
+      { type: "total", south: -35, north: -17, west: 11, east: 36,
+        peak: "2030-11-25T06:50:00Z", window: 20 },
+      { type: "total", south: -40, north: -25, west: 112, east: 155,
+        peak: "2030-11-25T06:50:00Z", window: 20 },
+      { type: "partial", south: -55, north: 5, west: -10, east: 160,
+        peak: "2030-11-25T06:50:00Z", window: 55 }
+    ]
+  }
+]
+
+function eclipseRank(type) {
+  return type === "total" ? 3 : type === "annular" ? 2
+    : type === "partial" ? 1 : 0
+}
+
+// Returns the eclipse state for a location and instant, or null. Regions are
+// checked strongest-first (total > annular > partial), and the sun must be up.
+function eclipseState(epochMs, latitude, longitude) {
+  var stamp = Number(epochMs)
+  var lat = Number(latitude)
+  var lon = Number(longitude)
+  if (!isFinite(stamp) || !isFinite(lat) || !isFinite(lon)) return null
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null
+  var sun = solarElevation(stamp, lat, lon)
+  if (sun === null || sun < -1) return null
+  for (var i = 0; i < ECLIPSES.length; i++) {
+    var eclipse = ECLIPSES[i]
+    var best = null
+    for (var j = 0; j < eclipse.regions.length; j++) {
+      var region = eclipse.regions[j]
+      if (lat < region.south || lat > region.north) continue
+      if (lon < region.west || lon > region.east) continue
+      if (best === null || eclipseRank(region.type) > eclipseRank(best.type))
+        best = region
+    }
+    if (best === null) continue
+    var peak = Date.parse(best.peak)
+    if (!isFinite(peak)) continue
+    var window = best.window * 60000
+    var delta = Math.abs(stamp - peak)
+    if (delta > window) continue
+    var phase = Math.pow(1 - delta / window, 0.65)
+    return {
+      type: best.type,
+      name: eclipse.name,
+      phase: phase,
+      darkness: (best.type === "total" ? 0.88
+        : best.type === "annular" ? 0.66 : 0.30) * phase,
+      corona: (best.type === "partial" ? 0.30 : 1) * phase
+    }
+  }
+  return null
+}
+
 // A few dates get a different effect: fireworks on New Year's Day and Bonfire
 // Night, and a meteor shower on April Fools' Day.
 function holidayEffectFor(dayKey) {
@@ -380,6 +505,7 @@ if (typeof module !== "undefined") {
     effectForCode: effectForCode,
     solarElevation: solarElevation,
     isDark: isDark,
+    eclipseState: eclipseState,
     holidayEffectFor: holidayEffectFor,
     descriptionForCode: descriptionForCode,
     iconForCode: iconForCode
