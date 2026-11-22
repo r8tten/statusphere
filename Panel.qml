@@ -57,6 +57,7 @@ Panel {
   property string gradientMode: "weather"
   property real gradientHue: 0
   property real gradientSat: 0
+  property real gradientLight: -1
   property bool gradientSeeded: false
   property bool gradientDragging: false
   property bool effectsEnabled: true
@@ -202,18 +203,24 @@ Panel {
   readonly property real heroSat: root.gradientMode === "custom"
     ? Math.min(1, Math.max(0, root.gradientSat / 100))
     : Math.min(1, Math.max(0, root.accent.hslSaturation * root.mood.sat))
+  // Custom brightness follows the accent until the slider is moved, then the
+  // stored value (20-75%) wins.
+  readonly property real heroLight: root.gradientMode === "custom"
+    && root.gradientLight >= 0
+      ? Math.max(0.2, Math.min(0.75, root.gradientLight / 100))
+      : root.accent.hslLightness
   // Custom vividness also deepens the wash, not just the saturation, so 100%
   // reads as a rich colour instead of a faint tint over the card.
   readonly property real customVivid: root.gradientMode === "custom"
     ? root.heroSat : 0
   readonly property color heroTop: Qt.hsla(root.heroHue, root.heroSat,
-    root.accent.hslLightness, 0.32 + 0.30 * root.customVivid)
+    root.heroLight, 0.32 + 0.30 * root.customVivid)
   readonly property color heroMid: Qt.hsla(root.heroHue, root.heroSat,
-    root.accent.hslLightness, 0.13 + 0.17 * root.customVivid)
+    root.heroLight, 0.13 + 0.17 * root.customVivid)
   readonly property color heroEnd: Qt.hsla(root.heroHue, root.heroSat,
-    root.accent.hslLightness, 0.0)
+    root.heroLight, 0.0)
   readonly property color tempGlow: Qt.hsla(root.heroHue, root.heroSat,
-    Math.min(0.8, root.accent.hslLightness + 0.18), 1.0)
+    Math.min(0.8, root.heroLight + 0.18), 1.0)
 
   // --- Derived text ------------------------------------------------------
 
@@ -346,6 +353,8 @@ Panel {
       root.accent.hslSaturation * root.mood.sat))
     root.gradientHue = Math.round(hue * 360)
     root.gradientSat = Math.round(sat * 100)
+    root.gradientLight = Math.round(
+      Math.max(0.2, Math.min(0.75, root.accent.hslLightness)) * 100)
     root.gradientSeeded = true
   }
 
@@ -375,6 +384,13 @@ Panel {
     const sat = Number(value)
     if (!isFinite(sat)) return
     root.gradientSat = Math.max(0, Math.min(100, sat))
+    root.gradientSeeded = true
+  }
+
+  function setGradientLight(value) {
+    const light = Number(value)
+    if (!isFinite(light)) return
+    root.gradientLight = Math.max(20, Math.min(75, light))
     root.gradientSeeded = true
   }
 
@@ -419,6 +435,13 @@ Panel {
             root.gradientSat = Math.max(0, Math.min(100, sat))
             root.gradientSeeded = true
           }
+          const light = Number(appearance.lightness)
+          if (isFinite(light)) {
+            root.gradientLight = Math.max(20, Math.min(75, light))
+            root.gradientSeeded = true
+          } else if (root.gradientLight >= 0) {
+            root.gradientLight = -1
+          }
           root.effectsEnabled = appearance.effects !== false
           root.commentFadeEnabled = appearance.commentFade !== false
         } else {
@@ -456,6 +479,7 @@ Panel {
     root.gradientMode = "weather"
     root.gradientHue = 0
     root.gradientSat = 0
+    root.gradientLight = -1
     root.gradientSeeded = false
     root.effectsEnabled = true
     root.commentFadeEnabled = true
@@ -479,6 +503,8 @@ Panel {
     if (root.gradientSeeded) {
       appearance.hue = Math.round(root.gradientHue)
       appearance.sat = Math.round(root.gradientSat)
+      if (root.gradientLight >= 0)
+        appearance.lightness = Math.round(root.gradientLight)
     }
     data.appearance = appearance
     if (root.hasCustomLocation) {
@@ -1915,6 +1941,98 @@ Panel {
                   function update(mouseX) {
                     const fraction = Math.max(0, Math.min(1, mouseX / width))
                     root.setGradientSat(fraction * 100)
+                  }
+
+                  onPressed: function(mouse) {
+                    root.gradientDragging = true
+                    update(mouse.x)
+                  }
+                  onPositionChanged: function(mouse) {
+                    if (pressed) update(mouse.x)
+                  }
+                  onReleased: {
+                    root.gradientDragging = false
+                    root.writeSettings()
+                  }
+                }
+              }
+
+              Item {
+                width: parent.width
+                height: Style.space(14)
+
+                Text {
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: "BRIGHTNESS"
+                  color: root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.1
+                  renderType: Text.NativeRendering
+                }
+
+                Text {
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: Math.round(root.heroLight * 100) + "%"
+                  color: root.mutedInk
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  renderType: Text.NativeRendering
+                }
+              }
+
+              Rectangle {
+                id: lightStrip
+
+                width: parent.width
+                height: Style.space(14)
+                radius: height / 2
+                gradient: Gradient {
+                  orientation: Gradient.Horizontal
+                  GradientStop {
+                    position: 0.0
+                    color: Qt.hsla(root.gradientHue / 360,
+                      Math.max(0.001, root.gradientSat / 100), 0.2, 1)
+                  }
+                  GradientStop {
+                    position: 0.5
+                    color: Qt.hsla(root.gradientHue / 360,
+                      Math.max(0.001, root.gradientSat / 100), 0.5, 1)
+                  }
+                  GradientStop {
+                    position: 1.0
+                    color: Qt.hsla(root.gradientHue / 360,
+                      Math.max(0.001, root.gradientSat / 100), 0.75, 1)
+                  }
+                }
+
+                Rectangle {
+                  width: Style.space(16)
+                  height: width
+                  radius: width / 2
+                  y: (parent.height - height) / 2
+                  x: Math.max(0, Math.min(parent.width - width,
+                    Math.max(0, Math.min(1, (root.heroLight * 100 - 20) / 55))
+                      * parent.width - width / 2))
+                  color: Qt.hsla(root.gradientHue / 360,
+                    Math.max(0.001, root.gradientSat / 100),
+                    root.heroLight, 1)
+                  border.width: 2
+                  border.color: root.ink
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+
+                  function update(mouseX) {
+                    const fraction = Math.max(0, Math.min(1, mouseX / width))
+                    root.setGradientLight(20 + fraction * 55)
                   }
 
                   onPressed: function(mouse) {

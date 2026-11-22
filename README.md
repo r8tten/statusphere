@@ -95,11 +95,11 @@ cycle the three tabs; closing the popup returns the page to General.
 ### Appearance
 
 The gradient follows the theme accent by default, nudged by the current
-condition (**Weather**). Switch to **Custom** to pick your own hue and
-vividness with two sliders; the first switch seeds them from the current
-weather gradient, then your values are remembered. Custom keeps the theme's
-accent lightness, so the popup still belongs to the desktop, and the vividness
-slider also deepens the wash so higher values carry more colour down the card.
+condition (**Weather**). Switch to **Custom** to pick your own hue, vividness,
+and brightness with three sliders; the first switch seeds them from the current
+weather gradient, then your values are remembered. Brightness starts at the
+theme's accent lightness and can move between 20% and 75%. Vividness also
+deepens the wash, so higher values carry more colour down the card.
 
 **Weather effects** is a single on/off switch for all particles. They only
 appear in the popup, are paused while the settings page is open, and stop when
@@ -142,7 +142,7 @@ It looks like:
   "tone": "unhinged",
   "unit": "metric",
   "appearance": {
-    "gradient": "custom", "hue": 205, "sat": 82,
+    "gradient": "custom", "hue": 205, "sat": 82, "lightness": 62,
     "effects": true, "commentFade": true
   },
   "location": { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
@@ -155,15 +155,15 @@ It looks like:
 ```
 
 Those values take precedence over the corresponding settings from then on.
-`appearance.gradient` is `weather` or `custom`; `hue` (0–360) and `sat`
-(0–100) are kept only once a custom gradient has been seeded. `effects` and
-`commentFade` are booleans and default to on. `locationSource` is `manual` or
-`auto`; omit `location` to follow Omarchy's shared location again. `favourites`
-holds up to 20 saved places, deduplicated by coordinates, and survives **Use
-Omarchy location**; removing the active saved location also clears `location`,
-so Statusphere falls back to Omarchy's. Delete the file to fall back to the
-configured defaults. Statusphere never writes to `~/.config/omarchy/shell.json`
-or to Omarchy's shared `weather.json`.
+`appearance.gradient` is `weather` or `custom`; `hue` (0–360), `sat` (0–100),
+and `lightness` (20–75) are kept only once a custom gradient has been seeded.
+`effects` and `commentFade` are booleans and default to on. `locationSource` is
+`manual` or `auto`; omit `location` to follow Omarchy's shared location again.
+`favourites` holds up to 20 saved places, deduplicated by coordinates, and
+survives **Use Omarchy location**; removing the active saved location also
+clears `location`, so Statusphere falls back to Omarchy's. Delete the file to
+fall back to the configured defaults. Statusphere never writes to
+`~/.config/omarchy/shell.json` or to Omarchy's shared `weather.json`.
 
 ## Files
 
