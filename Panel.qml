@@ -1039,13 +1039,15 @@ Panel {
             accent: root.accent
 
             Text {
+              // Optical nudge: the times glyph reads a touch left in its square.
               anchors.centerIn: parent
+              anchors.horizontalCenterOffset: 0.5
               textFormat: Text.PlainText
+              renderType: Text.QtRendering
               text: "\uf00d"
               color: closeButton.hasCursor ? root.ink : root.mutedInk
               font.family: root.fontFamily
               font.pixelSize: Style.font.title
-              renderType: Text.NativeRendering
             }
 
             MouseArea {
