@@ -130,9 +130,16 @@ approximate, and the effect respects **Weather effects**.
 **Comment fade** controls whether a new comment fades in, or swaps over
 instantly. It is on by default.
 
-Effects and comment fade are on by default. Neither the gradient nor these
-preferences are written to `shell.json`; they live in the plugin's own state
-file.
+**Temperature globe** is off by default. When enabled, a quiet sphere of dots
+turns slowly behind the weather icon and temperature, centred on the whole hero
+row with its edge just past the feels-like line. Its dropdown controls the dot
+count, rotation speed, diameter, tilt, limb ring, dot colour (auto or a custom
+hue), accent share, and opacity. It pauses while the settings are open or when
+animations are disabled.
+
+Effects and comment fade are on by default; Temperature globe is off. Neither
+the gradient nor these preferences are written to `shell.json`; they live in the
+plugin's own state file.
 
 Picking a tone, changing units, choosing a location, saving or removing a
 saved location, or changing appearance writes only this plugin's own state
@@ -150,7 +157,10 @@ It looks like:
   "unit": "metric",
   "appearance": {
     "gradient": "custom", "hue": 205, "sat": 82, "lightness": 62,
-    "effects": true, "commentFade": true
+    "effects": true, "commentFade": true,
+    "tempGlobe": true, "tempGlobeCount": 240, "tempGlobeSpeed": 18,
+    "tempGlobeSize": 110, "tempGlobeTilt": 20, "tempGlobeRing": 30,
+    "tempGlobeHue": -1, "tempGlobeAccent": 15, "tempGlobeOpacity": 35
   },
   "location": { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
   "locationSource": "manual",
@@ -164,7 +174,10 @@ It looks like:
 Those values take precedence over the corresponding settings from then on.
 `appearance.gradient` is `weather` or `custom`; `hue` (0–360), `sat` (0–100),
 and `lightness` (20–75) are kept only once a custom gradient has been seeded.
-`effects` and `commentFade` are booleans and default to on. `locationSource` is
+`effects` and `commentFade` are booleans and default to on; `tempGlobe`
+defaults to off, and its dot count (60–600), speed (0–90°/s), size (75–180%),
+tilt (−60–60°), ring (0–100%), colour (−1 for auto, or 0–360°), accent share
+(0–100%), and opacity (10–80%) are kept. `locationSource` is
 `manual` or `auto`; omit `location` to follow Omarchy's shared location again.
 `favourites` holds up to 20 saved places, deduplicated by coordinates, and
 survives **Use Omarchy location**; removing the active saved location also

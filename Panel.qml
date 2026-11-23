@@ -62,6 +62,15 @@ Panel {
   property bool gradientDragging: false
   property bool effectsEnabled: true
   property bool commentFadeEnabled: true
+  property bool tempGlobeEnabled: false
+  property int tempGlobeCount: 240
+  property int tempGlobeSpeed: 18
+  property int tempGlobeSize: 110
+  property int tempGlobeTilt: 20
+  property int tempGlobeRing: 30
+  property int tempGlobeHue: -1
+  property int tempGlobeAccent: 15
+  property int tempGlobeOpacity: 35
 
   readonly property string cachePath: Quickshell.env("HOME")
     + "/.cache/naoko.statusphere/report.json"
@@ -416,6 +425,61 @@ Panel {
     root.writeSettings()
   }
 
+  function setTempGlobeEnabled(value) {
+    const enabled = value === true
+    if (enabled === root.tempGlobeEnabled) return
+    root.tempGlobeEnabled = enabled
+    root.writeSettings()
+  }
+
+  function setTempGlobeCount(value) {
+    const count = Number(value)
+    if (!isFinite(count)) return
+    root.tempGlobeCount = Math.max(60, Math.min(600, Math.round(count)))
+  }
+
+  function setTempGlobeSpeed(value) {
+    const speed = Number(value)
+    if (!isFinite(speed)) return
+    root.tempGlobeSpeed = Math.max(0, Math.min(60, Math.round(speed)))
+  }
+
+  function setTempGlobeSize(value) {
+    const size = Number(value)
+    if (!isFinite(size)) return
+    root.tempGlobeSize = Math.max(75, Math.min(180, Math.round(size)))
+  }
+
+  function setTempGlobeTilt(value) {
+    const tilt = Number(value)
+    if (!isFinite(tilt)) return
+    root.tempGlobeTilt = Math.max(-60, Math.min(60, Math.round(tilt)))
+  }
+
+  function setTempGlobeRing(value) {
+    const ring = Number(value)
+    if (!isFinite(ring)) return
+    root.tempGlobeRing = Math.max(0, Math.min(100, Math.round(ring)))
+  }
+
+  function setTempGlobeHue(value) {
+    const hue = Number(value)
+    if (!isFinite(hue)) return
+    root.tempGlobeHue = Math.max(-1, Math.min(360, Math.round(hue)))
+  }
+
+  function setTempGlobeAccent(value) {
+    const accent = Number(value)
+    if (!isFinite(accent)) return
+    root.tempGlobeAccent = Math.max(0, Math.min(100, Math.round(accent)))
+  }
+
+  function setTempGlobeOpacity(value) {
+    const opacity = Number(value)
+    if (!isFinite(opacity)) return
+    root.tempGlobeOpacity = Math.max(10, Math.min(80, Math.round(opacity)))
+  }
+
   function applySettings(raw) {
     try {
       const data = JSON.parse(String(raw || ""))
@@ -452,9 +516,53 @@ Panel {
           }
           root.effectsEnabled = appearance.effects !== false
           root.commentFadeEnabled = appearance.commentFade !== false
+          root.tempGlobeEnabled = appearance.tempGlobe === true
+            || (appearance.tempGlobe === undefined
+              && appearance.tempDots === true)
+          const globeCount = Number(appearance.tempGlobeCount)
+          if (isFinite(globeCount))
+            root.tempGlobeCount = Math.max(60,
+              Math.min(600, Math.round(globeCount)))
+          const globeSpeed = Number(appearance.tempGlobeSpeed)
+          if (isFinite(globeSpeed))
+            root.tempGlobeSpeed = Math.max(0,
+              Math.min(90, Math.round(globeSpeed)))
+          const globeSize = Number(appearance.tempGlobeSize)
+          if (isFinite(globeSize))
+            root.tempGlobeSize = Math.max(75,
+              Math.min(180, Math.round(globeSize)))
+          const globeTilt = Number(appearance.tempGlobeTilt)
+          if (isFinite(globeTilt))
+            root.tempGlobeTilt = Math.max(-60,
+              Math.min(60, Math.round(globeTilt)))
+          const globeRing = Number(appearance.tempGlobeRing)
+          if (isFinite(globeRing))
+            root.tempGlobeRing = Math.max(0,
+              Math.min(100, Math.round(globeRing)))
+          const globeHue = Number(appearance.tempGlobeHue)
+          if (isFinite(globeHue))
+            root.tempGlobeHue = Math.max(-1,
+              Math.min(360, Math.round(globeHue)))
+          const globeAccent = Number(appearance.tempGlobeAccent)
+          if (isFinite(globeAccent))
+            root.tempGlobeAccent = Math.max(0,
+              Math.min(100, Math.round(globeAccent)))
+          const globeOpacity = Number(appearance.tempGlobeOpacity)
+          if (isFinite(globeOpacity))
+            root.tempGlobeOpacity = Math.max(10,
+              Math.min(80, Math.round(globeOpacity)))
         } else {
           root.effectsEnabled = true
           root.commentFadeEnabled = true
+          root.tempGlobeEnabled = false
+          root.tempGlobeCount = 240
+          root.tempGlobeSpeed = 18
+          root.tempGlobeSize = 110
+          root.tempGlobeTilt = 20
+          root.tempGlobeRing = 30
+          root.tempGlobeHue = -1
+          root.tempGlobeAccent = 15
+          root.tempGlobeOpacity = 35
         }
       }
       const location = Model.parseLocation(JSON.stringify(data.location || {}))
@@ -491,6 +599,15 @@ Panel {
     root.gradientSeeded = false
     root.effectsEnabled = true
     root.commentFadeEnabled = true
+    root.tempGlobeEnabled = false
+    root.tempGlobeCount = 240
+    root.tempGlobeSpeed = 18
+    root.tempGlobeSize = 110
+    root.tempGlobeTilt = 20
+    root.tempGlobeRing = 30
+    root.tempGlobeHue = -1
+    root.tempGlobeAccent = 15
+    root.tempGlobeOpacity = 35
     if (hadTone && root.loaded) root.rerollComment()
     if (hadLocation && root.loaded) root.refresh(true)
   }
@@ -513,6 +630,21 @@ Panel {
       appearance.sat = Math.round(root.gradientSat)
       if (root.gradientLight >= 0)
         appearance.lightness = Math.round(root.gradientLight)
+    }
+    if (root.tempGlobeEnabled || root.tempGlobeCount !== 240
+        || root.tempGlobeSpeed !== 18 || root.tempGlobeSize !== 110
+        || root.tempGlobeTilt !== 20 || root.tempGlobeRing !== 30
+        || root.tempGlobeHue !== -1 || root.tempGlobeAccent !== 15
+        || root.tempGlobeOpacity !== 35) {
+      appearance.tempGlobe = root.tempGlobeEnabled
+      appearance.tempGlobeCount = root.tempGlobeCount
+      appearance.tempGlobeSpeed = root.tempGlobeSpeed
+      appearance.tempGlobeSize = root.tempGlobeSize
+      appearance.tempGlobeTilt = root.tempGlobeTilt
+      appearance.tempGlobeRing = root.tempGlobeRing
+      appearance.tempGlobeHue = root.tempGlobeHue
+      appearance.tempGlobeAccent = root.tempGlobeAccent
+      appearance.tempGlobeOpacity = root.tempGlobeOpacity
     }
     data.appearance = appearance
     if (root.hasCustomLocation) {
@@ -975,6 +1107,8 @@ Panel {
         // --- Header -----------------------------------------------------
 
         Item {
+          id: panelHeader
+
           width: parent.width
           implicitHeight: Math.max(locationLabel.implicitHeight,
             closeButton.height)
@@ -1317,6 +1451,161 @@ Panel {
             }
           }
 
+          Canvas {
+            id: tempGlobe
+
+            readonly property real circleRadius: (Math.max(
+              heroRow.width, heroRow.height) / 2 + Style.space(3))
+              * root.tempGlobeSize / 100
+
+            x: heroRow.x + (heroRow.width - width) / 2
+            y: heroRow.y + (heroRow.height - height) / 2
+            width: circleRadius * 2
+            height: width
+            visible: root.tempGlobeEnabled
+            property var sphere: []
+            property real angle: 0
+
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+
+            function buildSphere() {
+              const count = Math.max(60, Math.min(600,
+                Math.round(root.tempGlobeCount)))
+              const golden = Math.PI * (3 - Math.sqrt(5))
+              const points = []
+              for (var i = 0; i < count; i++) {
+                const y = 1 - (i / Math.max(1, count - 1)) * 2
+                const ring = Math.sqrt(Math.max(0, 1 - y * y))
+                const theta = i * golden
+                points.push({
+                  x: Math.cos(theta) * ring,
+                  y: y,
+                  z: Math.sin(theta) * ring,
+                  accent: (i * 37) % 100
+                    < Math.round(root.tempGlobeAccent)
+                })
+              }
+              sphere = points
+              requestPaint()
+            }
+
+            Component.onCompleted: buildSphere()
+
+            Timer {
+              interval: 33
+              repeat: true
+              running: root.tempGlobeEnabled && root.opened
+                && !root.settingsOpen && Style.duration(1) > 0
+                && root.tempGlobeSpeed > 0
+              onTriggered: {
+                tempGlobe.angle = (tempGlobe.angle
+                  + root.tempGlobeSpeed * interval / 1000) % 360
+                tempGlobe.requestPaint()
+              }
+            }
+
+            onPaint: {
+              const ctx = getContext("2d")
+              ctx.reset()
+              ctx.clearRect(0, 0, width, height)
+              if (!visible || sphere.length === 0) return
+              const cx = width / 2
+              const cy = height / 2
+              const radius = Math.min(width, height) / 2 - 1
+              if (radius < 4) return
+              const radians = angle * Math.PI / 180
+              const sinA = Math.sin(radians)
+              const cosA = Math.cos(radians)
+              const tilt = root.tempGlobeTilt * Math.PI / 180
+              const sinT = Math.sin(tilt)
+              const cosT = Math.cos(tilt)
+              const strength = root.tempGlobeOpacity / 100
+              const dotBase = Math.max(0.8, radius * 0.020)
+              const baseColor = root.tempGlobeHue < 0 ? root.ink
+                : Qt.hsla(root.tempGlobeHue / 360, 0.72, 0.64, 1)
+
+              // Soft body so the dots read as a sphere.
+              ctx.globalAlpha = strength * 0.07
+              ctx.fillStyle = baseColor
+              ctx.beginPath()
+              ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+              ctx.fill()
+
+              const projected = []
+              for (var i = 0; i < sphere.length; i++) {
+                const p = sphere[i]
+                const x1 = p.x * cosA - p.z * sinA
+                const z1 = p.x * sinA + p.z * cosA
+                projected.push({
+                  x: cx + x1 * radius,
+                  y: cy + (p.y * cosT - z1 * sinT) * radius,
+                  z: p.y * sinT + z1 * cosT,
+                  accent: p.accent
+                })
+              }
+
+              for (var pass = 0; pass < 2; pass++) {
+                for (var j = 0; j < projected.length; j++) {
+                  const point = projected[j]
+                  const front = point.z >= 0
+                  if ((pass === 1) !== front) continue
+                  const depth = (point.z + 1) / 2
+                  const alpha = strength * (0.08 + 0.92 * depth * depth)
+                  const dot = dotBase * (0.55 + 0.85 * depth)
+                  ctx.fillStyle = point.accent ? root.accent : baseColor
+                  ctx.globalAlpha = alpha * 0.16
+                  ctx.beginPath()
+                  ctx.arc(point.x, point.y, dot * 2.2, 0, Math.PI * 2)
+                  ctx.fill()
+                  ctx.globalAlpha = alpha
+                  ctx.beginPath()
+                  ctx.arc(point.x, point.y, dot, 0, Math.PI * 2)
+                  ctx.fill()
+                }
+              }
+              if (root.tempGlobeRing > 0) {
+                const stroke = Math.max(0.7, radius * 0.009)
+                ctx.globalAlpha = strength
+                  * (root.tempGlobeRing / 100) * 0.9
+                ctx.strokeStyle = baseColor
+                ctx.lineWidth = stroke
+                ctx.beginPath()
+                ctx.arc(cx, cy, radius - stroke / 2, 0, Math.PI * 2)
+                ctx.stroke()
+              }
+              ctx.globalAlpha = 1
+            }
+          }
+
+          Connections {
+            target: root
+
+            function onTempGlobeCountChanged() {
+              tempGlobe.buildSphere()
+            }
+
+            function onTempGlobeOpacityChanged() {
+              tempGlobe.requestPaint()
+            }
+
+            function onTempGlobeTiltChanged() {
+              tempGlobe.requestPaint()
+            }
+
+            function onTempGlobeRingChanged() {
+              tempGlobe.requestPaint()
+            }
+
+            function onTempGlobeHueChanged() {
+              tempGlobe.requestPaint()
+            }
+
+            function onTempGlobeAccentChanged() {
+              tempGlobe.buildSphere()
+            }
+          }
+
           Row {
             id: heroRow
 
@@ -1338,31 +1627,39 @@ Panel {
               width: Math.max(tempText.implicitWidth, feelsText.implicitWidth)
               spacing: Style.space(1)
 
-              Text {
-                id: tempText
+              Item {
+                id: tempWrap
 
                 width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                textFormat: Text.PlainText
-                text: root.currentTemp
-                color: root.ink
-                font.family: root.fontFamily
-                font.pixelSize: Math.round(Style.font.displayLarge * 2.2)
-                font.bold: true
-                renderType: Text.NativeRendering
+                height: tempText.implicitHeight
 
-                layer.enabled: true
-                layer.smooth: true
-                layer.effect: MultiEffect {
-                  shadowEnabled: true
-                  shadowColor: root.tempGlow
-                  shadowOpacity: 0.5
-                  shadowBlur: 0.5
-                  shadowHorizontalOffset: 0
-                  shadowVerticalOffset: 0
-                  autoPaddingEnabled: true
-                  blurMax: 32
+                Text {
+                  id: tempText
+
+                  width: parent.width
+                  horizontalAlignment: Text.AlignHCenter
+                  textFormat: Text.PlainText
+                  text: root.currentTemp
+                  color: root.ink
+                  font.family: root.fontFamily
+                  font.pixelSize: Math.round(Style.font.displayLarge * 2.2)
+                  font.bold: true
+                  renderType: Text.NativeRendering
+
+                  layer.enabled: true
+                  layer.smooth: true
+                  layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: root.tempGlow
+                    shadowOpacity: 0.5
+                    shadowBlur: 0.5
+                    shadowHorizontalOffset: 0
+                    shadowVerticalOffset: 0
+                    autoPaddingEnabled: true
+                    blurMax: 32
+                  }
                 }
+
               }
 
               Text {
@@ -1681,11 +1978,52 @@ Panel {
 
         // --- Settings ---------------------------------------------------
 
-        Column {
-          id: settingsBody
+        // --- Settings viewport ------------------------------------------
+
+        Item {
+          id: settingsViewport
 
           visible: root.settingsOpen
           width: parent.width
+
+          readonly property real cardCap: Math.min(Style.space(640),
+            panel.availableCardHeight > 1
+              ? panel.availableCardHeight : Style.space(640))
+          readonly property real availableHeight: Math.max(Style.space(180),
+            cardCap - panel.verticalContentInset - panelHeader.implicitHeight
+              - tabBar.height - contentColumn.spacing * 2)
+
+          height: Math.min(settingsBody.implicitHeight, availableHeight)
+
+          function revealTempGlobe() {
+            if (!root.tempGlobeEnabled) return
+            Qt.callLater(function() { settingsScrollToBottom.restart() })
+          }
+
+          Flickable {
+            id: settingsFlick
+
+            anchors.fill: parent
+            contentWidth: width
+            contentHeight: settingsBody.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            interactive: contentHeight > height
+            flickDeceleration: 1800
+            maximumFlickVelocity: 2600
+
+            function clampScroll() {
+              const maxY = Math.max(0, contentHeight - height)
+              if (contentY > maxY) contentY = maxY
+            }
+
+            onContentHeightChanged: clampScroll()
+            onHeightChanged: clampScroll()
+
+        Column {
+          id: settingsBody
+
+          width: settingsFlick.width
           spacing: Style.space(10)
 
           // --- General --------------------------------------------------
@@ -2243,6 +2581,256 @@ Panel {
                 checked: root.commentFadeEnabled
                 onToggled: root.setCommentFadeEnabled(!root.commentFadeEnabled)
               }
+
+              SettingsDivider { }
+
+              SettingsSwitchRow {
+                label: "Temperature globe"
+                description: "A dotted globe turning behind the temperature."
+                checked: root.tempGlobeEnabled
+                onToggled: {
+                  const enabled = !root.tempGlobeEnabled
+                  root.setTempGlobeEnabled(enabled)
+                  if (enabled) settingsViewport.revealTempGlobe()
+                }
+              }
+
+              Item {
+                id: tempGlobeOptions
+
+                width: parent.width
+                height: root.tempGlobeEnabled
+                  ? tempGlobeOptionsBody.implicitHeight : 0
+                visible: height > 0.01
+                clip: true
+                opacity: root.tempGlobeEnabled ? 1 : 0
+
+                Behavior on height {
+                  NumberAnimation {
+                    duration: Style.duration(260)
+                    easing.type: Easing.OutCubic
+                  }
+                }
+                Behavior on opacity {
+                  NumberAnimation { duration: Style.duration(200) }
+                }
+
+                Column {
+                  id: tempGlobeOptionsBody
+
+                  width: parent.width
+                  spacing: Style.space(6)
+
+                  SettingsSliderRow {
+                    label: "Dots"
+                    value: root.tempGlobeCount
+                    minimum: 60
+                    maximum: 600
+                    valueText: Math.round(root.tempGlobeCount).toString()
+                    onMoved: function(value) { root.setTempGlobeCount(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    label: "Speed"
+                    value: root.tempGlobeSpeed
+                    minimum: 0
+                    maximum: 90
+                    valueText: Math.round(root.tempGlobeSpeed) + "\u00b0/s"
+                    onMoved: function(value) { root.setTempGlobeSpeed(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    label: "Size"
+                    value: root.tempGlobeSize
+                    minimum: 75
+                    maximum: 180
+                    valueText: Math.round(root.tempGlobeSize) + "%"
+                    onMoved: function(value) { root.setTempGlobeSize(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    label: "Tilt"
+                    value: root.tempGlobeTilt
+                    minimum: -60
+                    maximum: 60
+                    valueText: Math.round(root.tempGlobeTilt) + "\u00b0"
+                    onMoved: function(value) { root.setTempGlobeTilt(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    label: "Ring"
+                    value: root.tempGlobeRing
+                    minimum: 0
+                    maximum: 100
+                    valueText: Math.round(root.tempGlobeRing) + "%"
+                    onMoved: function(value) { root.setTempGlobeRing(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  Item {
+                    width: parent.width
+                    height: Style.space(14)
+
+                    Text {
+                      anchors.left: parent.left
+                      anchors.verticalCenter: parent.verticalCenter
+                      textFormat: Text.PlainText
+                      text: "DOT COLOUR"
+                      color: root.mutedInk
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      font.bold: true
+                      font.letterSpacing: 1.1
+                      renderType: Text.NativeRendering
+                    }
+
+                    ValueBadge {
+                      anchors.right: parent.right
+                      anchors.verticalCenter: parent.verticalCenter
+                      text: root.tempGlobeHue < 0
+                        ? "AUTO" : Math.round(root.tempGlobeHue) + "\u00b0"
+                    }
+                  }
+
+                  Rectangle {
+                    visible: root.tempGlobeHue >= 0
+                    width: parent.width
+                    height: Style.space(8)
+                    radius: height / 2
+                    gradient: Gradient {
+                      orientation: Gradient.Horizontal
+                      GradientStop { position: 0.0; color: "#ff4d4d" }
+                      GradientStop { position: 1 / 6; color: "#ffd24d" }
+                      GradientStop { position: 2 / 6; color: "#6bff6b" }
+                      GradientStop { position: 3 / 6; color: "#4dd8ff" }
+                      GradientStop { position: 4 / 6; color: "#4d7dff" }
+                      GradientStop { position: 5 / 6; color: "#d24dff" }
+                      GradientStop { position: 1.0; color: "#ff4d4d" }
+                    }
+
+                    Rectangle {
+                      width: Style.space(12)
+                      height: width
+                      radius: width / 2
+                      y: (parent.height - height) / 2
+                      x: Math.max(0, Math.min(parent.width - width,
+                        (root.tempGlobeHue / 360) * parent.width - width / 2))
+                      color: Qt.hsla(root.tempGlobeHue / 360, 0.72, 0.64, 1)
+                      border.width: 2
+                      border.color: root.ink
+                    }
+
+                    MouseArea {
+                      anchors.fill: parent
+                      cursorShape: Qt.PointingHandCursor
+
+                      function update(mouseX) {
+                        const fraction = Math.max(0,
+                          Math.min(1, mouseX / width))
+                        root.setTempGlobeHue(fraction * 360)
+                      }
+
+                      onPressed: function(mouse) { update(mouse.x) }
+                      onPositionChanged: function(mouse) {
+                        if (pressed) update(mouse.x)
+                      }
+                      onReleased: root.writeSettings()
+                    }
+                  }
+
+                  Row {
+                    width: parent.width
+                    spacing: Style.space(6)
+
+                    Rectangle {
+                      id: globeAutoSwatch
+
+                      readonly property bool selected: root.tempGlobeHue < 0
+
+                      width: Style.space(34)
+                      height: Style.space(16)
+                      radius: height / 2
+                      color: globeAutoSwatch.selected
+                        ? root.activeFill : "transparent"
+                      border.width: 1
+                      border.color: globeAutoSwatch.selected ? root.ink
+                        : Commons.Util.alpha(root.ink, 0.20)
+
+                      Text {
+                        anchors.centerIn: parent
+                        textFormat: Text.PlainText
+                        text: "AUTO"
+                        color: root.ink
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        font.bold: true
+                        renderType: Text.NativeRendering
+                      }
+
+                      MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                          root.setTempGlobeHue(-1)
+                          root.writeSettings()
+                        }
+                      }
+                    }
+
+                    Repeater {
+                      model: [0, 45, 120, 200, 280, 325]
+
+                      delegate: Rectangle {
+                        required property var modelData
+
+                        readonly property bool selected: root.tempGlobeHue >= 0
+                          && root.hueNear(root.tempGlobeHue, modelData)
+
+                        width: Style.space(16)
+                        height: width
+                        radius: width / 2
+                        color: Qt.hsla(modelData / 360, 0.72, 0.64, 1)
+                        border.width: selected ? 2 : 1
+                        border.color: selected ? root.ink
+                          : Commons.Util.alpha(root.ink, 0.20)
+
+                        MouseArea {
+                          anchors.fill: parent
+                          cursorShape: Qt.PointingHandCursor
+                          onClicked: {
+                            root.setTempGlobeHue(modelData)
+                            root.writeSettings()
+                          }
+                        }
+                      }
+                    }
+                  }
+
+                  SettingsSliderRow {
+                    label: "Accent mix"
+                    value: root.tempGlobeAccent
+                    minimum: 0
+                    maximum: 100
+                    valueText: Math.round(root.tempGlobeAccent) + "%"
+                    onMoved: function(value) { root.setTempGlobeAccent(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    label: "Opacity"
+                    value: root.tempGlobeOpacity
+                    minimum: 10
+                    maximum: 80
+                    valueText: Math.round(root.tempGlobeOpacity) + "%"
+                    onMoved: function(value) { root.setTempGlobeOpacity(value) }
+                    onCommitted: root.writeSettings()
+                  }
+                }
+              }
             }
           }
 
@@ -2734,6 +3322,88 @@ Panel {
               }
             }
           }
+
+          Item { width: 1; height: Style.space(8) }
+        }
+
+            WheelHandler {
+              acceptedDevices: PointerDevice.Mouse
+
+              onWheel: function(event) {
+                const maxY = Math.max(0,
+                  settingsFlick.contentHeight - settingsFlick.height)
+                const delta = event.pixelDelta.y !== 0
+                  ? event.pixelDelta.y : event.angleDelta.y * 0.6
+                settingsWheelScroll.to = Math.max(0,
+                  Math.min(maxY, settingsFlick.contentY - delta))
+                settingsWheelScroll.restart()
+                event.accepted = true
+              }
+            }
+          }
+
+          NumberAnimation {
+            id: settingsWheelScroll
+
+            target: settingsFlick
+            property: "contentY"
+            duration: Style.duration(180)
+            easing.type: Easing.OutCubic
+          }
+
+          NumberAnimation {
+            id: settingsScrollTop
+
+            target: settingsFlick
+            property: "contentY"
+            to: 0
+            duration: Style.duration(220)
+            easing.type: Easing.OutCubic
+          }
+
+          NumberAnimation {
+            id: settingsScrollToBottom
+
+            target: settingsFlick
+            property: "contentY"
+            to: Math.max(0, settingsFlick.contentHeight - settingsFlick.height)
+            duration: Style.duration(300)
+            easing.type: Easing.OutCubic
+          }
+
+          Connections {
+            target: root
+
+            function onSettingsTabChanged() {
+              settingsScrollTop.restart()
+            }
+
+          }
+
+          Rectangle {
+            id: settingsScrollTrack
+
+            visible: settingsFlick.contentHeight > settingsFlick.height + 1
+            z: 2
+            x: settingsViewport.width - width - 1
+            y: 0
+            width: 2
+            height: settingsViewport.height
+            radius: 1
+            color: Commons.Util.alpha(root.ink, 0.08)
+
+            Rectangle {
+              width: parent.width
+              radius: 1
+              color: Commons.Util.alpha(root.ink, 0.35)
+              height: Math.max(12, settingsScrollTrack.height
+                * settingsFlick.height / settingsFlick.contentHeight)
+              y: (settingsScrollTrack.height - height)
+                * Math.max(0, Math.min(1, settingsFlick.contentY
+                  / Math.max(1, settingsFlick.contentHeight
+                    - settingsFlick.height)))
+            }
+          }
         }
       }
     }
@@ -2899,6 +3569,99 @@ Panel {
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
       onClicked: row.toggled()
+    }
+  }
+
+  component SettingsSliderRow: Item {
+    id: row
+
+    property string label: ""
+    property real value: 0
+    property real minimum: 0
+    property real maximum: 100
+    property string valueText: ""
+
+    signal moved(real value)
+    signal committed()
+
+    width: parent ? parent.width : implicitWidth
+    implicitHeight: labelRow.height + Style.space(8) + track.height
+      + Style.space(2)
+
+    readonly property real fraction: Math.max(0, Math.min(1,
+      (value - minimum) / Math.max(0.001, maximum - minimum)))
+
+    Item {
+      id: labelRow
+
+      width: parent.width
+      height: Style.space(14)
+
+      Text {
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: row.label.toUpperCase()
+        color: root.mutedInk
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        font.bold: true
+        font.letterSpacing: 1.1
+        renderType: Text.NativeRendering
+      }
+
+      ValueBadge {
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        text: row.valueText
+      }
+    }
+
+    Rectangle {
+      id: track
+
+      y: labelRow.height + Style.space(8)
+      width: parent.width
+      height: Style.space(6)
+      radius: height / 2
+      color: Commons.Util.alpha(root.ink, 0.10)
+
+      Rectangle {
+        width: track.width * row.fraction
+        height: parent.height
+        radius: height / 2
+        color: Commons.Util.alpha(root.accent, 0.75)
+      }
+
+      Rectangle {
+        width: Style.space(12)
+        height: width
+        radius: width / 2
+        y: (parent.height - height) / 2
+        x: Math.max(0, Math.min(parent.width - width,
+          row.fraction * parent.width - width / 2))
+        color: root.accent
+        border.width: 2
+        border.color: root.ink
+      }
+
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+
+        function update(mouseX) {
+          const fraction = Math.max(0, Math.min(1, mouseX / width))
+          row.moved(row.minimum + fraction * (row.maximum - row.minimum))
+        }
+
+        onPressed: function(mouse) {
+          update(mouse.x)
+        }
+        onPositionChanged: function(mouse) {
+          if (pressed) update(mouse.x)
+        }
+        onReleased: row.committed()
+      }
     }
   }
 
