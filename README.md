@@ -130,14 +130,19 @@ approximate, and the effect respects **Weather effects**.
 **Comment fade** controls whether a new comment fades in, or swaps over
 instantly. It is on by default.
 
-**Temperature globe** is off by default. When enabled, a quiet sphere of dots
-turns slowly behind the weather icon and temperature, centred on the whole hero
-row with its edge just past the feels-like line. Its dropdown controls the dot
-count, rotation speed, diameter, tilt, limb ring, dot colour (auto or a custom
-hue), accent share, and opacity. It pauses while the settings are open or when
-animations are disabled.
+**Temperature motion** is off by default. When enabled, either a quiet sphere
+of dots turns behind the weather icon and temperature, or Saturn-style banded
+rings orbit the hero, with the near half crossing in front. Both are centred on
+the whole hero row and reach just past the feels-like line. Its dropdown chooses
+**Globe** or **Rings** and controls the dot count, rotation speed, ring
+diameter, tilt, planet size for rings, limb ring for the globe, dot colour
+(auto or a custom hue), accent share, and opacity. In Rings mode **Ring size**
+scales only the rings and **Planet size** scales only the central globe; the
+rings, globe, and globe border each get their own opacity slider. In Globe mode
+**Size** and a single **Opacity** control the dotted globe. It pauses while the settings are open or when animations are
+disabled.
 
-Effects and comment fade are on by default; Temperature globe is off. Neither
+Effects and comment fade are on by default; Temperature motion is off. Neither
 the gradient nor these preferences are written to `shell.json`; they live in the
 plugin's own state file.
 
@@ -158,8 +163,11 @@ It looks like:
   "appearance": {
     "gradient": "custom", "hue": 205, "sat": 82, "lightness": 62,
     "effects": true, "commentFade": true,
-    "tempGlobe": true, "tempGlobeCount": 240, "tempGlobeSpeed": 18,
-    "tempGlobeSize": 110, "tempGlobeTilt": 20, "tempGlobeRing": 30,
+    "tempGlobe": true, "tempGlobeStyle": "globe", "tempGlobeCount": 240,
+    "tempGlobeSpeed": 18, "tempGlobeSize": 110, "tempGlobeTilt": 20,
+    "tempGlobeCore": 100, "tempGlobeRing": 30,
+    "tempGlobeRingOpacity": 35, "tempGlobeCoreOpacity": 35,
+    "tempGlobeBorderOpacity": 35,
     "tempGlobeHue": -1, "tempGlobeAccent": 15, "tempGlobeOpacity": 35
   },
   "location": { "name": "Reykjavík", "latitude": 64.1466, "longitude": -21.9426 },
@@ -175,9 +183,10 @@ Those values take precedence over the corresponding settings from then on.
 `appearance.gradient` is `weather` or `custom`; `hue` (0–360), `sat` (0–100),
 and `lightness` (20–75) are kept only once a custom gradient has been seeded.
 `effects` and `commentFade` are booleans and default to on; `tempGlobe`
-defaults to off, and its dot count (60–600), speed (0–90°/s), size (75–180%),
-tilt (−60–60°), ring (0–100%), colour (−1 for auto, or 0–360°), accent share
-(0–100%), and opacity (10–80%) are kept. `locationSource` is
+defaults to off, and its style (`globe` or `rings`), dot count (60–600), speed
+(0–90°/s), size (75–180%), tilt (−60–60°), planet size (50–150%), limb ring
+(0–100%), ring/globe/border opacity (0–100%), colour (−1 for auto, or 0–360°),
+accent share (0–100%), and the globe-style opacity (10–80%) are kept. `locationSource` is
 `manual` or `auto`; omit `location` to follow Omarchy's shared location again.
 `favourites` holds up to 20 saved places, deduplicated by coordinates, and
 survives **Use Omarchy location**; removing the active saved location also

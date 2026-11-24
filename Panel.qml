@@ -67,6 +67,11 @@ Panel {
   property int tempGlobeSpeed: 18
   property int tempGlobeSize: 110
   property int tempGlobeTilt: 20
+  property string tempGlobeStyle: "globe"
+  property int tempGlobeCore: 100
+  property int tempGlobeRingOpacity: 35
+  property int tempGlobeCoreOpacity: 35
+  property int tempGlobeBorderOpacity: 35
   property int tempGlobeRing: 30
   property int tempGlobeHue: -1
   property int tempGlobeAccent: 15
@@ -441,7 +446,7 @@ Panel {
   function setTempGlobeSpeed(value) {
     const speed = Number(value)
     if (!isFinite(speed)) return
-    root.tempGlobeSpeed = Math.max(0, Math.min(60, Math.round(speed)))
+    root.tempGlobeSpeed = Math.max(0, Math.min(90, Math.round(speed)))
   }
 
   function setTempGlobeSize(value) {
@@ -454,6 +459,40 @@ Panel {
     const tilt = Number(value)
     if (!isFinite(tilt)) return
     root.tempGlobeTilt = Math.max(-60, Math.min(60, Math.round(tilt)))
+  }
+
+  function setTempGlobeStyle(value) {
+    const style = value === "rings" ? "rings" : "globe"
+    if (style === root.tempGlobeStyle) return
+    root.tempGlobeStyle = style
+    root.writeSettings()
+  }
+
+  function setTempGlobeCore(value) {
+    const core = Number(value)
+    if (!isFinite(core)) return
+    root.tempGlobeCore = Math.max(50, Math.min(150, Math.round(core)))
+  }
+
+  function setTempGlobeRingOpacity(value) {
+    const opacity = Number(value)
+    if (!isFinite(opacity)) return
+    root.tempGlobeRingOpacity = Math.max(0,
+      Math.min(100, Math.round(opacity)))
+  }
+
+  function setTempGlobeCoreOpacity(value) {
+    const opacity = Number(value)
+    if (!isFinite(opacity)) return
+    root.tempGlobeCoreOpacity = Math.max(0,
+      Math.min(100, Math.round(opacity)))
+  }
+
+  function setTempGlobeBorderOpacity(value) {
+    const opacity = Number(value)
+    if (!isFinite(opacity)) return
+    root.tempGlobeBorderOpacity = Math.max(0,
+      Math.min(100, Math.round(opacity)))
   }
 
   function setTempGlobeRing(value) {
@@ -535,10 +574,30 @@ Panel {
           if (isFinite(globeTilt))
             root.tempGlobeTilt = Math.max(-60,
               Math.min(60, Math.round(globeTilt)))
+          if (appearance.tempGlobeStyle === "rings")
+            root.tempGlobeStyle = "rings"
+          else if (appearance.tempGlobeStyle === "globe")
+            root.tempGlobeStyle = "globe"
+          const globeCore = Number(appearance.tempGlobeCore)
+          if (isFinite(globeCore))
+            root.tempGlobeCore = Math.max(50,
+              Math.min(150, Math.round(globeCore)))
           const globeRing = Number(appearance.tempGlobeRing)
           if (isFinite(globeRing))
             root.tempGlobeRing = Math.max(0,
               Math.min(100, Math.round(globeRing)))
+          const ringOpacity = Number(appearance.tempGlobeRingOpacity)
+          if (isFinite(ringOpacity))
+            root.tempGlobeRingOpacity = Math.max(0,
+              Math.min(100, Math.round(ringOpacity)))
+          const coreOpacity = Number(appearance.tempGlobeCoreOpacity)
+          if (isFinite(coreOpacity))
+            root.tempGlobeCoreOpacity = Math.max(0,
+              Math.min(100, Math.round(coreOpacity)))
+          const borderOpacity = Number(appearance.tempGlobeBorderOpacity)
+          if (isFinite(borderOpacity))
+            root.tempGlobeBorderOpacity = Math.max(0,
+              Math.min(100, Math.round(borderOpacity)))
           const globeHue = Number(appearance.tempGlobeHue)
           if (isFinite(globeHue))
             root.tempGlobeHue = Math.max(-1,
@@ -551,6 +610,12 @@ Panel {
           if (isFinite(globeOpacity))
             root.tempGlobeOpacity = Math.max(10,
               Math.min(80, Math.round(globeOpacity)))
+          if (appearance.tempGlobeRingOpacity === undefined)
+            root.tempGlobeRingOpacity = root.tempGlobeOpacity
+          if (appearance.tempGlobeCoreOpacity === undefined)
+            root.tempGlobeCoreOpacity = root.tempGlobeOpacity
+          if (appearance.tempGlobeBorderOpacity === undefined)
+            root.tempGlobeBorderOpacity = root.tempGlobeOpacity
         } else {
           root.effectsEnabled = true
           root.commentFadeEnabled = true
@@ -559,6 +624,11 @@ Panel {
           root.tempGlobeSpeed = 18
           root.tempGlobeSize = 110
           root.tempGlobeTilt = 20
+          root.tempGlobeStyle = "globe"
+          root.tempGlobeCore = 100
+          root.tempGlobeRingOpacity = 35
+          root.tempGlobeCoreOpacity = 35
+          root.tempGlobeBorderOpacity = 35
           root.tempGlobeRing = 30
           root.tempGlobeHue = -1
           root.tempGlobeAccent = 15
@@ -604,6 +674,11 @@ Panel {
     root.tempGlobeSpeed = 18
     root.tempGlobeSize = 110
     root.tempGlobeTilt = 20
+    root.tempGlobeStyle = "globe"
+    root.tempGlobeCore = 100
+    root.tempGlobeRingOpacity = 35
+    root.tempGlobeCoreOpacity = 35
+    root.tempGlobeBorderOpacity = 35
     root.tempGlobeRing = 30
     root.tempGlobeHue = -1
     root.tempGlobeAccent = 15
@@ -634,6 +709,10 @@ Panel {
     if (root.tempGlobeEnabled || root.tempGlobeCount !== 240
         || root.tempGlobeSpeed !== 18 || root.tempGlobeSize !== 110
         || root.tempGlobeTilt !== 20 || root.tempGlobeRing !== 30
+        || root.tempGlobeStyle !== "globe" || root.tempGlobeCore !== 100
+        || root.tempGlobeRingOpacity !== 35
+        || root.tempGlobeCoreOpacity !== 35
+        || root.tempGlobeBorderOpacity !== 35
         || root.tempGlobeHue !== -1 || root.tempGlobeAccent !== 15
         || root.tempGlobeOpacity !== 35) {
       appearance.tempGlobe = root.tempGlobeEnabled
@@ -641,6 +720,11 @@ Panel {
       appearance.tempGlobeSpeed = root.tempGlobeSpeed
       appearance.tempGlobeSize = root.tempGlobeSize
       appearance.tempGlobeTilt = root.tempGlobeTilt
+      appearance.tempGlobeStyle = root.tempGlobeStyle
+      appearance.tempGlobeCore = root.tempGlobeCore
+      appearance.tempGlobeRingOpacity = root.tempGlobeRingOpacity
+      appearance.tempGlobeCoreOpacity = root.tempGlobeCoreOpacity
+      appearance.tempGlobeBorderOpacity = root.tempGlobeBorderOpacity
       appearance.tempGlobeRing = root.tempGlobeRing
       appearance.tempGlobeHue = root.tempGlobeHue
       appearance.tempGlobeAccent = root.tempGlobeAccent
@@ -1349,9 +1433,22 @@ Panel {
           id: hero
 
           visible: root.loaded && !root.settingsOpen
+          clip: true
           width: parent.width
+          readonly property bool ringStyle: root.tempGlobeEnabled
+            && root.tempGlobeStyle === "rings"
+          readonly property real coreHeight: ringStyle
+            ? 2 * tempGlobe.planetRadius + Style.space(10)
+            : 0
+          readonly property real ringHeight: ringStyle
+            ? 2 * tempGlobe.ringRadius
+              * Math.abs(Math.sin(root.tempGlobeTilt * Math.PI / 180))
+              + Style.space(10)
+            : 0
+
           implicitHeight: Math.max(heroRow.implicitHeight + Style.space(30),
-            Style.space(150), root.eclipseActive ? Style.space(204) : 0)
+            Style.space(150), root.eclipseActive ? Style.space(204) : 0,
+            coreHeight, ringHeight)
 
           Behavior on implicitHeight {
             NumberAnimation {
@@ -1454,9 +1551,22 @@ Panel {
           Canvas {
             id: tempGlobe
 
-            readonly property real circleRadius: (Math.max(
-              heroRow.width, heroRow.height) / 2 + Style.space(3))
+            readonly property real baseRadius: Math.max(
+              heroRow.width, heroRow.height) / 2 + Style.space(3)
+            readonly property real ringRadius: baseRadius * 1.62
               * root.tempGlobeSize / 100
+            readonly property real planetRadius: baseRadius * 1.10
+              * Math.max(0.5, Math.min(1.5, root.tempGlobeCore / 100))
+            readonly property real circleRadius:
+              root.tempGlobeStyle === "rings"
+                ? Math.max(ringRadius, planetRadius)
+                : baseRadius * root.tempGlobeSize / 100
+            readonly property var ringBands: [
+              { inner: 0.690, outer: 0.737, alpha: 0.55 },
+              { inner: 0.758, outer: 0.858, alpha: 1.00 },
+              { inner: 0.892, outer: 0.958, alpha: 0.80 },
+              { inner: 0.976, outer: 0.990, alpha: 0.60 }
+            ]
 
             x: heroRow.x + (heroRow.width - width) / 2
             y: heroRow.y + (heroRow.height - height) / 2
@@ -1472,22 +1582,113 @@ Panel {
             function buildSphere() {
               const count = Math.max(60, Math.min(600,
                 Math.round(root.tempGlobeCount)))
-              const golden = Math.PI * (3 - Math.sqrt(5))
               const points = []
-              for (var i = 0; i < count; i++) {
-                const y = 1 - (i / Math.max(1, count - 1)) * 2
-                const ring = Math.sqrt(Math.max(0, 1 - y * y))
-                const theta = i * golden
-                points.push({
-                  x: Math.cos(theta) * ring,
-                  y: y,
-                  z: Math.sin(theta) * ring,
-                  accent: (i * 37) % 100
-                    < Math.round(root.tempGlobeAccent)
-                })
+
+              if (root.tempGlobeStyle === "rings") {
+                const sparkleCount = Math.max(16, Math.round(count * 0.25))
+                const weights = []
+                var total = 0
+                for (var b = 0; b < ringBands.length; b++) {
+                  const width = ringBands[b].outer - ringBands[b].inner
+                  weights.push(width)
+                  total += width
+                }
+                for (var j = 0; j < sparkleCount; j++) {
+                  var pick = Math.random() * total
+                  var band = ringBands[0]
+                  for (var k = 0; k < ringBands.length; k++) {
+                    pick -= weights[k]
+                    if (pick <= 0) {
+                      band = ringBands[k]
+                      break
+                    }
+                  }
+                  const fraction = band.inner + Math.random()
+                    * (band.outer - band.inner)
+                  const theta = Math.random() * Math.PI * 2
+                  points.push({
+                    x: Math.cos(theta) * fraction,
+                    y: (Math.random() - 0.5) * 0.006,
+                    z: Math.sin(theta) * fraction,
+                    accent: Math.random() * 100
+                      < Math.round(root.tempGlobeAccent)
+                  })
+                }
+              } else {
+                const golden = Math.PI * (3 - Math.sqrt(5))
+                for (var i = 0; i < count; i++) {
+                  const y = 1 - (i / Math.max(1, count - 1)) * 2
+                  const ring = Math.sqrt(Math.max(0, 1 - y * y))
+                  const theta = i * golden
+                  points.push({
+                    x: Math.cos(theta) * ring,
+                    y: y,
+                    z: Math.sin(theta) * ring,
+                    accent: (i * 37) % 100
+                      < Math.round(root.tempGlobeAccent)
+                  })
+                }
               }
+
               sphere = points
               requestPaint()
+            }
+
+            function projectPoints(cx, cy, radius, cosA, sinA,
+              sinT, cosT) {
+              const out = []
+              for (var i = 0; i < sphere.length; i++) {
+                const p = sphere[i]
+                const x1 = p.x * cosA - p.z * sinA
+                const z1 = p.x * sinA + p.z * cosA
+                out.push({
+                  x: cx + x1 * radius,
+                  y: cy + (p.y * cosT - z1 * sinT) * radius,
+                  z: p.y * sinT + z1 * cosT,
+                  accent: p.accent
+                })
+              }
+              return out
+            }
+
+            function paintBands(ctx, cx, cy, radius, ratio, strength,
+              color, startAngle, endAngle, factor) {
+              ctx.save()
+              ctx.translate(cx, cy)
+              ctx.scale(1, ratio)
+              ctx.strokeStyle = color
+              ctx.lineWidth = Math.max(1, radius * 0.008)
+              for (var b = 0; b < ringBands.length; b++) {
+                const band = ringBands[b]
+                const steps = Math.max(2, Math.ceil(
+                  (band.outer - band.inner) / 0.004))
+                ctx.globalAlpha = strength * band.alpha * factor * 0.060
+                for (var st = 0; st < steps; st++) {
+                  const f = band.inner + (band.outer - band.inner)
+                    * (st / (steps - 1))
+                  ctx.beginPath()
+                  ctx.arc(0, 0, radius * f, startAngle, endAngle, false)
+                  ctx.stroke()
+                }
+              }
+              ctx.restore()
+            }
+
+            function paintSparkles(ctx, points, radius, strength,
+              color, front) {
+              const dotBase = Math.max(0.8, radius * 0.010)
+              for (var i = 0; i < points.length; i++) {
+                const point = points[i]
+                if ((point.z >= 0) !== front) continue
+                const depth = (point.z + 1) / 2
+                const alpha = strength * (0.15 + 0.85 * depth * depth)
+                const dot = dotBase * (0.55 + 0.85 * depth)
+                ctx.fillStyle = point.accent ? root.accent : color
+                ctx.globalAlpha = alpha
+                ctx.beginPath()
+                ctx.arc(point.x, point.y, dot, 0, Math.PI * 2)
+                ctx.fill()
+              }
             }
 
             Component.onCompleted: buildSphere()
@@ -1517,13 +1718,66 @@ Panel {
               const radians = angle * Math.PI / 180
               const sinA = Math.sin(radians)
               const cosA = Math.cos(radians)
+              const strength = root.tempGlobeOpacity / 100
+              const baseColor = root.tempGlobeHue < 0 ? root.ink
+                : Qt.hsla(root.tempGlobeHue / 360, 0.72, 0.64, 1)
+
+              if (root.tempGlobeStyle === "rings") {
+                // Negative tilt puts the near half of the rings below the
+                // planet, like Saturn viewed from above its equator.
+                const tilt = -root.tempGlobeTilt * Math.PI / 180
+                const sinT = Math.sin(tilt)
+                const cosT = Math.cos(tilt)
+                const ratio = Math.max(0.04, Math.abs(sinT))
+                const ringR = Math.max(4, tempGlobe.ringRadius - 1)
+                const planetR = Math.max(8, Math.min(
+                  tempGlobe.planetRadius, radius))
+                const ringStrength = root.tempGlobeRingOpacity / 100
+                const coreStrength = root.tempGlobeCoreOpacity / 100
+                const borderStrength = root.tempGlobeBorderOpacity / 100
+
+                const projected = projectPoints(cx, cy, ringR,
+                  cosA, sinA, sinT, cosT)
+
+                // Far half of the rings behind the planet.
+                paintBands(ctx, cx, cy, ringR, ratio, ringStrength,
+                  baseColor, Math.PI, Math.PI * 2, 0.6)
+                paintSparkles(ctx, projected, ringR, ringStrength,
+                  baseColor, false)
+
+                // Soft planet body so the rings have something to orbit.
+                const glow = ctx.createRadialGradient(
+                  cx - planetR * 0.32, cy - planetR * 0.36,
+                  planetR * 0.08, cx, cy, planetR)
+                glow.addColorStop(0,
+                  Commons.Util.alpha(baseColor, coreStrength * 0.18))
+                glow.addColorStop(0.62,
+                  Commons.Util.alpha(baseColor, coreStrength * 0.06))
+                glow.addColorStop(1,
+                  Commons.Util.alpha(baseColor, 0))
+                ctx.globalAlpha = 1
+                ctx.fillStyle = glow
+                ctx.beginPath()
+                ctx.arc(cx, cy, planetR, 0, Math.PI * 2)
+                ctx.fill()
+
+                ctx.globalAlpha = borderStrength * 0.32
+                ctx.strokeStyle = baseColor
+                ctx.lineWidth = Math.max(0.8, radius * 0.008)
+                ctx.beginPath()
+                ctx.arc(cx, cy, planetR - 0.4, 0, Math.PI * 2)
+                ctx.stroke()
+
+                // The near half lives in tempRingsFront, above the hero
+                // content, so it can cross in front of the icon and temp.
+                ctx.globalAlpha = 1
+                return
+              }
+
               const tilt = root.tempGlobeTilt * Math.PI / 180
               const sinT = Math.sin(tilt)
               const cosT = Math.cos(tilt)
-              const strength = root.tempGlobeOpacity / 100
               const dotBase = Math.max(0.8, radius * 0.020)
-              const baseColor = root.tempGlobeHue < 0 ? root.ink
-                : Qt.hsla(root.tempGlobeHue / 360, 0.72, 0.64, 1)
 
               // Soft body so the dots read as a sphere.
               ctx.globalAlpha = strength * 0.07
@@ -1564,6 +1818,7 @@ Panel {
                   ctx.fill()
                 }
               }
+
               if (root.tempGlobeRing > 0) {
                 const stroke = Math.max(0.7, radius * 0.009)
                 ctx.globalAlpha = strength
@@ -1596,6 +1851,11 @@ Panel {
             function onTempGlobeRingChanged() {
               tempGlobe.requestPaint()
             }
+
+            function onTempGlobeStyleChanged() {
+              tempGlobe.buildSphere()
+            }
+
 
             function onTempGlobeHueChanged() {
               tempGlobe.requestPaint()
@@ -1660,6 +1920,51 @@ Panel {
                   }
                 }
 
+                Canvas {
+                  id: tempRingsFront
+
+                  x: tempGlobe.x - heroRow.x - heroTextColumn.x - tempWrap.x
+                  y: tempGlobe.y - heroRow.y - heroTextColumn.y - tempWrap.y
+                  width: tempGlobe.width
+                  height: tempGlobe.height
+                  visible: root.tempGlobeEnabled
+                    && root.tempGlobeStyle === "rings"
+                  property real angle: tempGlobe.angle
+                  property var sphere: tempGlobe.sphere
+
+                  onAngleChanged: requestPaint()
+                  onSphereChanged: requestPaint()
+                  onWidthChanged: requestPaint()
+                  onHeightChanged: requestPaint()
+
+                  onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.reset()
+                    ctx.clearRect(0, 0, width, height)
+                    if (!visible || sphere.length === 0) return
+                    const cx = width / 2
+                    const cy = height / 2
+                    const ringR = Math.max(4, tempGlobe.ringRadius - 1)
+                    if (ringR < 4) return
+                    const radians = angle * Math.PI / 180
+                    const sinA = Math.sin(radians)
+                    const cosA = Math.cos(radians)
+                    const tilt = -root.tempGlobeTilt * Math.PI / 180
+                    const sinT = Math.sin(tilt)
+                    const cosT = Math.cos(tilt)
+                    const ratio = Math.max(0.04, Math.abs(sinT))
+                    const strength = root.tempGlobeRingOpacity / 100 * 0.85
+                    const baseColor = root.tempGlobeHue < 0 ? root.ink
+                      : Qt.hsla(root.tempGlobeHue / 360, 0.72, 0.64, 1)
+                    const projected = tempGlobe.projectPoints(cx, cy, ringR,
+                      cosA, sinA, sinT, cosT)
+                    tempGlobe.paintBands(ctx, cx, cy, ringR, ratio, strength,
+                      baseColor, 0, Math.PI, 1)
+                    tempGlobe.paintSparkles(ctx, projected, ringR, strength,
+                      baseColor, true)
+                    ctx.globalAlpha = 1
+                  }
+                }
               }
 
               Text {
@@ -1678,6 +1983,8 @@ Panel {
               }
             }
           }
+
+
         }
 
         // --- Snark ------------------------------------------------------
@@ -2585,8 +2892,8 @@ Panel {
               SettingsDivider { }
 
               SettingsSwitchRow {
-                label: "Temperature globe"
-                description: "A dotted globe turning behind the temperature."
+                label: "Temperature motion"
+                description: "A dotted globe or Saturn rings behind the hero."
                 checked: root.tempGlobeEnabled
                 onToggled: {
                   const enabled = !root.tempGlobeEnabled
@@ -2621,6 +2928,80 @@ Panel {
                   width: parent.width
                   spacing: Style.space(6)
 
+                  Item {
+                    width: parent.width
+                    height: Style.space(14)
+
+                    Text {
+                      anchors.left: parent.left
+                      anchors.verticalCenter: parent.verticalCenter
+                      textFormat: Text.PlainText
+                      text: "STYLE"
+                      color: root.mutedInk
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      font.bold: true
+                      font.letterSpacing: 1.1
+                      renderType: Text.NativeRendering
+                    }
+
+                    ValueBadge {
+                      anchors.right: parent.right
+                      anchors.verticalCenter: parent.verticalCenter
+                      text: root.tempGlobeStyle === "rings" ? "RINGS" : "GLOBE"
+                    }
+                  }
+
+                  Row {
+                    width: parent.width
+                    spacing: Style.space(4)
+
+                    Repeater {
+                      model: [
+                        { value: "globe", label: "GLOBE" },
+                        { value: "rings", label: "RINGS" }
+                      ]
+
+                      delegate: Rectangle {
+                        id: globeStyleButton
+
+                        required property var modelData
+
+                        readonly property bool selected: root.tempGlobeStyle
+                          === globeStyleButton.modelData.value
+
+                        width: (parent.width - parent.spacing) / 2
+                        height: Style.space(26)
+                        radius: Style.space(8)
+                        color: globeStyleButton.selected
+                          ? root.activeFill : root.tileFill
+                        border.width: 1
+                        border.color: globeStyleButton.selected
+                          ? root.accent : root.tileBorder
+
+                        Text {
+                          anchors.centerIn: parent
+                          textFormat: Text.PlainText
+                          text: globeStyleButton.modelData.label
+                          color: globeStyleButton.selected
+                            ? root.accent : root.mutedInk
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.caption
+                          font.bold: true
+                          font.letterSpacing: 1.0
+                          renderType: Text.NativeRendering
+                        }
+
+                        MouseArea {
+                          anchors.fill: parent
+                          cursorShape: Qt.PointingHandCursor
+                          onClicked: root.setTempGlobeStyle(
+                            globeStyleButton.modelData.value)
+                        }
+                      }
+                    }
+                  }
+
                   SettingsSliderRow {
                     label: "Dots"
                     value: root.tempGlobeCount
@@ -2642,7 +3023,8 @@ Panel {
                   }
 
                   SettingsSliderRow {
-                    label: "Size"
+                    label: root.tempGlobeStyle === "rings"
+                      ? "Ring size" : "Size"
                     value: root.tempGlobeSize
                     minimum: 75
                     maximum: 180
@@ -2662,7 +3044,19 @@ Panel {
                   }
 
                   SettingsSliderRow {
-                    label: "Ring"
+                    visible: root.tempGlobeStyle === "rings"
+                    label: "Planet size"
+                    value: root.tempGlobeCore
+                    minimum: 50
+                    maximum: 150
+                    valueText: Math.round(root.tempGlobeCore) + "%"
+                    onMoved: function(value) { root.setTempGlobeCore(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    visible: root.tempGlobeStyle === "globe"
+                    label: "Limb ring"
                     value: root.tempGlobeRing
                     minimum: 0
                     maximum: 100
@@ -2821,12 +3215,52 @@ Panel {
                   }
 
                   SettingsSliderRow {
+                    visible: root.tempGlobeStyle === "globe"
                     label: "Opacity"
                     value: root.tempGlobeOpacity
                     minimum: 10
                     maximum: 80
                     valueText: Math.round(root.tempGlobeOpacity) + "%"
                     onMoved: function(value) { root.setTempGlobeOpacity(value) }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    visible: root.tempGlobeStyle === "rings"
+                    label: "Ring opacity"
+                    value: root.tempGlobeRingOpacity
+                    minimum: 0
+                    maximum: 100
+                    valueText: Math.round(root.tempGlobeRingOpacity) + "%"
+                    onMoved: function(value) {
+                      root.setTempGlobeRingOpacity(value)
+                    }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    visible: root.tempGlobeStyle === "rings"
+                    label: "Globe opacity"
+                    value: root.tempGlobeCoreOpacity
+                    minimum: 0
+                    maximum: 100
+                    valueText: Math.round(root.tempGlobeCoreOpacity) + "%"
+                    onMoved: function(value) {
+                      root.setTempGlobeCoreOpacity(value)
+                    }
+                    onCommitted: root.writeSettings()
+                  }
+
+                  SettingsSliderRow {
+                    visible: root.tempGlobeStyle === "rings"
+                    label: "Globe border"
+                    value: root.tempGlobeBorderOpacity
+                    minimum: 0
+                    maximum: 100
+                    valueText: Math.round(root.tempGlobeBorderOpacity) + "%"
+                    onMoved: function(value) {
+                      root.setTempGlobeBorderOpacity(value)
+                    }
                     onCommitted: root.writeSettings()
                   }
                 }
