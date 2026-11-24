@@ -12,7 +12,8 @@ forecast, and opinions about the weather.
   humidity / wind / rain tiles, a 3-day forecast, and a footer with the last
   update time and refresh. The cog opens a settings page with **General**
   (personality and units), **Appearance** (gradient and effects), and
-  **Location** tabs.
+  **Location** tabs. Settings cards stay collapsed until clicked, one opens at
+  a time, and they reset to collapsed when the panel is reopened.
 - Effects: weather particles in the popup only — snow, rain, thunderstorms
   with a lightning flash, drifting fog, twinkling stars after dark, fireworks
   on New Year's Day and Bonfire Night, and a meteor shower on April Fools'

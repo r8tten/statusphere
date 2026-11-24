@@ -29,6 +29,7 @@ Panel {
   property string locationSource: ""
   property bool settingsOpen: false
   property string settingsTab: "general"
+  property string activeSettingsCard: ""
   property var geocodeResults: []
   property bool locationBusy: false
   property string locationError: ""
@@ -1023,6 +1024,7 @@ Panel {
     }
     root.settingsOpen = true
     root.settingsTab = "general"
+    root.activeSettingsCard = ""
     root.locationError = ""
     root.geocodeResults = []
   }
@@ -1030,6 +1032,7 @@ Panel {
   function closeSettings() {
     root.settingsOpen = false
     root.settingsTab = "general"
+    root.activeSettingsCard = ""
     root.locationBusy = false
     root.locationError = ""
     root.geocodeResults = []
@@ -2302,9 +2305,38 @@ Panel {
 
           height: Math.min(settingsBody.implicitHeight, availableHeight)
 
+          property Item pendingRevealCard: null
+
           function revealTempGlobe() {
             if (!root.tempGlobeEnabled) return
             Qt.callLater(function() { settingsScrollToBottom.restart() })
+          }
+
+          function revealCard(item) {
+            settingsViewport.pendingRevealCard = item
+            cardRevealTimer.restart()
+          }
+
+          Timer {
+            id: cardRevealTimer
+
+            interval: Style.duration(240)
+            onTriggered: {
+              const item = settingsViewport.pendingRevealCard
+              if (!item || !root.settingsOpen) return
+              settingsViewport.pendingRevealCard = null
+              const cardY = item.mapToItem(settingsBody, 0, 0).y
+              const maxY = Math.max(0,
+                settingsFlick.contentHeight - settingsFlick.height)
+              const headerBottom = cardY + Style.space(52)
+              const viewTop = settingsFlick.contentY
+              const viewBottom = viewTop + settingsFlick.height
+              if (cardY < viewTop || headerBottom > viewBottom) {
+                settingsScrollCard.to = Math.max(0,
+                  Math.min(maxY, cardY - Style.space(6)))
+                settingsScrollCard.restart()
+              }
+            }
           }
 
           Flickable {
@@ -2342,6 +2374,7 @@ Panel {
 
             SettingsCard {
               title: "Personality"
+              cardKey: "personality"
               subtitle: "How much attitude the comment gets."
               glyph: "\uf007"
 
@@ -2430,6 +2463,7 @@ Panel {
 
             SettingsCard {
               title: "Units"
+              cardKey: "units"
               subtitle: "Temperature scale in the popup."
               glyph: "\uf2c7"
               iconTint: "#7bed9f"
@@ -2507,6 +2541,7 @@ Panel {
 
             SettingsCard {
               title: "Gradient"
+              cardKey: "gradient"
               subtitle: "The wash behind the popup."
               glyph: "\uf043"
 
@@ -2869,6 +2904,7 @@ Panel {
 
             SettingsCard {
               title: "Effects"
+              cardKey: "effects"
               subtitle: "Particles and motion."
               glyph: "\uf005"
               iconTint: "#ffcf7a"
@@ -3277,6 +3313,7 @@ Panel {
 
             SettingsCard {
               title: "Current location"
+              cardKey: "current-location"
               subtitle: "Where the weather comes from."
               glyph: "\uf041"
               iconTint: "#ff8f8f"
@@ -3465,6 +3502,7 @@ Panel {
             SettingsCard {
               visible: root.favouritesVisible
               title: "Saved locations"
+              cardKey: "saved-locations"
               subtitle: "Tap a place to switch."
               glyph: "\uf005"
               iconTint: "#ffcf7a"
@@ -3611,6 +3649,7 @@ Panel {
 
             SettingsCard {
               title: "Search"
+              cardKey: "search"
               subtitle: "Find a place by name."
               glyph: "\uf002"
               iconTint: "#8fd3ff"
@@ -3805,6 +3844,15 @@ Panel {
             easing.type: Easing.OutCubic
           }
 
+          NumberAnimation {
+            id: settingsScrollCard
+
+            target: settingsFlick
+            property: "contentY"
+            duration: Style.duration(220)
+            easing.type: Easing.OutCubic
+          }
+
           Connections {
             target: root
 
@@ -3876,6 +3924,9 @@ Panel {
     property string subtitle: ""
     property string glyph: ""
     property color iconTint: root.accent
+    property string cardKey: ""
+    readonly property bool expanded: cardKey !== ""
+      && root.activeSettingsCard === cardKey
     default property alias content: body.data
 
     width: parent ? parent.width : implicitWidth
@@ -3883,7 +3934,13 @@ Panel {
     radius: Style.space(16)
     color: Commons.Util.alpha(root.ink, 0.045)
     border.width: 1
-    border.color: Commons.Util.alpha(root.ink, 0.08)
+    border.color: card.expanded
+      ? Commons.Util.alpha(root.ink, 0.16)
+      : Commons.Util.alpha(root.ink, 0.08)
+
+    Behavior on border.color {
+      ColorAnimation { duration: Style.duration(160) }
+    }
 
     Column {
       id: cardLayout
@@ -3892,50 +3949,120 @@ Panel {
       anchors.right: parent.right
       anchors.top: parent.top
       anchors.margins: Style.space(10)
-      spacing: Style.space(8)
+      spacing: 0
 
-      Row {
+      Item {
+        id: headerArea
+
         width: parent.width
-        spacing: Style.space(8)
+        implicitHeight: cardHeader.implicitHeight
 
-        SettingsIcon { glyph: card.glyph; tint: card.iconTint }
+        Row {
+          id: cardHeader
 
-        Column {
-          width: parent.width - Style.space(34)
-          anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(1)
+          width: parent.width
+          spacing: Style.space(8)
 
-          Text {
-            width: parent.width
-            textFormat: Text.PlainText
-            text: card.title
-            color: root.ink
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            font.bold: true
-            elide: Text.ElideRight
-            renderType: Text.NativeRendering
+          SettingsIcon { glyph: card.glyph; tint: card.iconTint }
+
+          Column {
+            width: parent.width - Style.space(34) - chevron.width
+              - Style.space(8)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(1)
+
+            Text {
+              width: parent.width
+              textFormat: Text.PlainText
+              text: card.title
+              color: root.ink
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              font.bold: true
+              elide: Text.ElideRight
+              renderType: Text.NativeRendering
+            }
+
+            Text {
+              visible: card.subtitle !== ""
+              width: parent.width
+              textFormat: Text.PlainText
+              text: card.subtitle
+              color: root.mutedInk
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+              renderType: Text.NativeRendering
+            }
           }
 
           Text {
-            visible: card.subtitle !== ""
-            width: parent.width
+            id: chevron
+
+            anchors.verticalCenter: parent.verticalCenter
             textFormat: Text.PlainText
-            text: card.subtitle
-            color: root.mutedInk
+            text: "\uf054"
+            color: headerMouse.containsMouse ? root.ink : root.mutedInk
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
-            elide: Text.ElideRight
+            rotation: card.expanded ? 90 : 0
             renderType: Text.NativeRendering
+
+            Behavior on rotation {
+              NumberAnimation {
+                duration: Style.duration(180)
+                easing.type: Easing.OutCubic
+              }
+            }
+          }
+        }
+
+        MouseArea {
+          id: headerMouse
+
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+
+          onClicked: {
+            if (card.cardKey === "") return
+            if (card.expanded) {
+              root.activeSettingsCard = ""
+              return
+            }
+            root.activeSettingsCard = card.cardKey
+            settingsViewport.revealCard(card)
           }
         }
       }
 
-      Column {
-        id: body
+      Item {
+        id: bodyReveal
 
         width: parent.width
-        spacing: Style.space(8)
+        height: card.expanded
+          ? body.implicitHeight + Style.space(8) : 0
+        visible: height > 0.5
+        clip: true
+        opacity: card.expanded ? 1 : 0
+
+        Behavior on height {
+          NumberAnimation {
+            duration: Style.duration(220)
+            easing.type: Easing.OutCubic
+          }
+        }
+        Behavior on opacity {
+          NumberAnimation { duration: Style.duration(160) }
+        }
+
+        Column {
+          id: body
+
+          y: Style.space(8)
+          width: parent.width
+          spacing: Style.space(8)
+        }
       }
     }
   }
